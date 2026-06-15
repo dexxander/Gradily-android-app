@@ -235,7 +235,7 @@ fun ClassListScreen(
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Column(modifier = Modifier.weight(1f)) {
+                                    Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
                                         Text(
                                             subject.courseName,
                                             color = GradilyTheme.colors.textPrimary,
@@ -248,7 +248,10 @@ fun ClassListScreen(
                                             fontSize = 13.sp
                                         )
                                     }
-                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
                                         Button(
                                             onClick = {
                                                 viewModel.setCurrentSubject(subject)

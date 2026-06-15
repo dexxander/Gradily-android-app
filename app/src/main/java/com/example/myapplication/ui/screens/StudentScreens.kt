@@ -297,120 +297,144 @@ fun StudentListItem(
     viewModel: GradilyViewModel,
     onAssessStudent: (Student) -> Unit
 ) {
-    val assessment by viewModel.getAssessmentByStudentId(student.studentId).collectAsState(initial = null)
+    val assessmentFlow = remember(student.studentId) { viewModel.getAssessmentByStudentId(student.studentId) }
+    val assessment by assessmentFlow.collectAsState(initial = null)
     val gpa = viewModel.calculateGPA(assessment)
 
     GlassCard(modifier = Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp)
         ) {
-            // Avatar + Name
             Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(GradilyTheme.colors.surfaceGreen),
-                    contentAlignment = Alignment.Center
+                // Avatar + Name + Info
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
                 ) {
-                    Text(
-                        student.studentName.first().uppercase(),
-                        color = GradilyTheme.colors.accentGreen,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp
-                    )
-                }
-                Spacer(modifier = Modifier.width(12.dp))
-                Column {
-                    Text(student.studentName, color = GradilyTheme.colors.textPrimary, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
-                    Text(student.email.ifBlank { "No email" }, color = GradilyTheme.colors.textMuted, fontSize = 11.sp)
-                    
-                    if (student.totalClasses > 0) {
-                        val attendancePercent = (student.classesAttended.toFloat() / student.totalClasses.toFloat() * 100).toInt()
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(GradilyTheme.colors.surfaceGreen),
+                        contentAlignment = Alignment.Center
+                    ) {
                         Text(
-                            "Attendance: $attendancePercent% (${student.classesAttended}/${student.totalClasses})",
-                            color = if (attendancePercent >= 80) GradilyTheme.colors.accentGreen else if (attendancePercent >= 50) GradilyTheme.colors.accentAmber else GradilyTheme.colors.accentRed,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Medium
+                            student.studentName.firstOrNull()?.uppercase() ?: "?",
+                            color = GradilyTheme.colors.accentGreen,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp
                         )
-                    } else {
-                        Text("No attendance records", color = GradilyTheme.colors.textMuted, fontSize = 10.sp)
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text(student.studentName, color = GradilyTheme.colors.textPrimary, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                        Text(student.email.ifBlank { "No email" }, color = GradilyTheme.colors.textMuted, fontSize = 12.sp)
+                        
+                        if (student.totalClasses > 0) {
+                            val attendancePercent = (student.classesAttended.toFloat() / student.totalClasses.toFloat() * 100).toInt()
+                            Text(
+                                "Attendance: $attendancePercent% (${student.classesAttended}/${student.totalClasses})",
+                                color = if (attendancePercent >= 80) GradilyTheme.colors.accentGreen else if (attendancePercent >= 50) GradilyTheme.colors.accentAmber else GradilyTheme.colors.accentRed,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        } else {
+                            Text("No attendance", color = GradilyTheme.colors.textMuted, fontSize = 11.sp)
+                        }
+                    }
+                }
+
+                // Top right: GPA & Delete
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(
+                                if (gpa >= 3.0) GradilyTheme.colors.accentGreen.copy(alpha = 0.2f)
+                                else if (gpa >= 2.0) GradilyTheme.colors.accentAmber.copy(alpha = 0.2f)
+                                else GradilyTheme.colors.accentRed.copy(alpha = 0.2f)
+                            )
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            String.format("%.2f", gpa),
+                            color = if (gpa >= 3.0) GradilyTheme.colors.accentGreen
+                            else if (gpa >= 2.0) GradilyTheme.colors.accentAmber
+                            else GradilyTheme.colors.accentRed,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.width(8.dp))
+                    
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(GradilyTheme.colors.accentRed.copy(alpha = 0.1f))
+                            .clickable { viewModel.deleteStudent(student) },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Default.Delete, "Delete", tint = GradilyTheme.colors.accentRed, modifier = Modifier.size(16.dp))
                     }
                 }
             }
 
-            // GPA badge
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(
-                        if (gpa >= 3.0) GradilyTheme.colors.accentGreen.copy(alpha = 0.2f)
-                        else if (gpa >= 2.0) GradilyTheme.colors.accentAmber.copy(alpha = 0.2f)
-                        else GradilyTheme.colors.accentRed.copy(alpha = 0.2f)
-                    )
-                    .padding(horizontal = 8.dp, vertical = 4.dp)
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Bottom Actions Row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    String.format("%.2f", gpa),
-                    color = if (gpa >= 3.0) GradilyTheme.colors.accentGreen
-                    else if (gpa >= 2.0) GradilyTheme.colors.accentAmber
-                    else GradilyTheme.colors.accentRed,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 13.sp
-                )
-            }
-
-            Spacer(modifier = Modifier.width(8.dp))
-
-            // Attendance buttons
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                IconButton(
-                    onClick = { viewModel.markAttendance(student, true) },
-                    modifier = Modifier.size(28.dp).clip(CircleShape).background(GradilyTheme.colors.surfaceGreen)
-                ) {
-                    Text("P", color = GradilyTheme.colors.accentGreen, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                // Attendance P/A
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Attendance:", color = GradilyTheme.colors.textMuted, fontSize = 12.sp)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(CircleShape)
+                                .background(GradilyTheme.colors.surfaceGreen)
+                                .clickable { viewModel.markAttendance(student, true) },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("P", color = GradilyTheme.colors.accentGreen, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        }
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(CircleShape)
+                                .background(GradilyTheme.colors.glassBgDark)
+                                .clickable { viewModel.markAttendance(student, false) },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("A", color = GradilyTheme.colors.accentRed, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
                 }
-                IconButton(
-                    onClick = { viewModel.markAttendance(student, false) },
-                    modifier = Modifier.size(28.dp).clip(CircleShape).background(GradilyTheme.colors.glassBgDark)
+
+                // Assess Button
+                Button(
+                    onClick = {
+                        viewModel.setCurrentStudent(student)
+                        onAssessStudent(student)
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = GradilyTheme.colors.accentBlue.copy(alpha = 0.2f)),
+                    shape = RoundedCornerShape(10.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                    modifier = Modifier.height(36.dp),
+                    elevation = ButtonDefaults.buttonElevation(0.dp)
                 ) {
-                    Text("A", color = GradilyTheme.colors.accentRed, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Text("Assess", color = GradilyTheme.colors.accentBlue, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
                 }
-            }
-
-            Spacer(modifier = Modifier.width(8.dp))
-
-            // Assess button
-            Button(
-                onClick = {
-                    viewModel.setCurrentStudent(student)
-                    onAssessStudent(student)
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = GradilyTheme.colors.accentBlue.copy(alpha = 0.2f)),
-                shape = RoundedCornerShape(10.dp),
-                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-                modifier = Modifier.height(32.dp),
-                elevation = ButtonDefaults.buttonElevation(0.dp)
-            ) {
-                Text("Assess", color = GradilyTheme.colors.accentBlue, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
-            }
-
-            Spacer(modifier = Modifier.width(4.dp))
-
-            // Delete
-            IconButton(
-                onClick = { viewModel.deleteStudent(student) },
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(GradilyTheme.colors.accentRed.copy(alpha = 0.1f))
-            ) {
-                Icon(Icons.Default.Delete, "Delete", tint = GradilyTheme.colors.accentRed, modifier = Modifier.size(18.dp))
             }
         }
     }
@@ -492,7 +516,8 @@ fun StudentGradeScreen(
 ) {
     val student = viewModel.currentStudent.collectAsState().value
     val subject = viewModel.currentSubject.collectAsState().value
-    val assessment by viewModel.getAssessment().collectAsState(initial = null)
+    val assessmentFlow = remember(student?.studentId) { viewModel.getAssessmentByStudentId(student?.studentId ?: "") }
+    val assessment by assessmentFlow.collectAsState(initial = null)
 
     var quiz1 by remember(assessment) { mutableStateOf(assessment?.quiz1?.toString() ?: "0.0") }
     var assign1 by remember(assessment) { mutableStateOf(assessment?.assign1?.toString() ?: "0.0") }
@@ -585,10 +610,18 @@ fun StudentGradeScreen(
                                 quiz2 = quiz2.toDoubleOrNull() ?: 0.0,
                                 assign2 = assign2.toDoubleOrNull() ?: 0.0,
                                 finalExam = finalExam.toDoubleOrNull() ?: 0.0
+                            ) ?: Assessment(
+                                gradeId = "",
+                                studentId = student?.studentId ?: "",
+                                subjectId = subject?.subjectId ?: "",
+                                quiz1 = quiz1.toDoubleOrNull() ?: 0.0,
+                                assign1 = assign1.toDoubleOrNull() ?: 0.0,
+                                midterm = midterm.toDoubleOrNull() ?: 0.0,
+                                quiz2 = quiz2.toDoubleOrNull() ?: 0.0,
+                                assign2 = assign2.toDoubleOrNull() ?: 0.0,
+                                finalExam = finalExam.toDoubleOrNull() ?: 0.0
                             )
-                            if (updatedAssessment != null) {
-                                viewModel.updateAssessment(updatedAssessment)
-                            }
+                            viewModel.updateAssessment(updatedAssessment)
                             onNavigateBack()
                         }
                     )

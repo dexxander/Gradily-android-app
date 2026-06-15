@@ -26,7 +26,7 @@ private val LightColorScheme = lightColorScheme(
 
 @Composable
 fun MyApplicationTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    darkTheme: Boolean = true, // Force dark theme for better readability with mesh background
     // Dynamic color is available on Android 12+
     dynamicColor: Boolean = false, // Disabled to prioritize custom theme
     content: @Composable () -> Unit

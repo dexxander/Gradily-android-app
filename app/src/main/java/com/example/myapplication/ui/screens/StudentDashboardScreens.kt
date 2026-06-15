@@ -198,7 +198,8 @@ fun StudentDashboardScreen(
                 } else {
                     LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         items(enrolledStudents, key = { it.studentId }) { student ->
-                            val assessment by viewModel.getAssessmentByStudentId(student.studentId).collectAsState(initial = null)
+                            val assessmentFlow = remember(student.studentId) { viewModel.getAssessmentByStudentId(student.studentId) }
+                            val assessment by assessmentFlow.collectAsState(initial = null)
                             val gpa = viewModel.calculateGPA(assessment)
 
                             GlassCard(
@@ -264,7 +265,8 @@ fun StudentSubjectDetailScreen(
     student: Student,
     onNavigateBack: () -> Unit
 ) {
-    val assessment by viewModel.getAssessmentByStudentId(student.studentId).collectAsState(initial = null)
+    val assessmentFlow = remember(student.studentId) { viewModel.getAssessmentByStudentId(student.studentId) }
+    val assessment by assessmentFlow.collectAsState(initial = null)
     val gpa = viewModel.calculateGPA(assessment)
     val scope = rememberCoroutineScope()
     var subjectName by remember { mutableStateOf("Loading...") }

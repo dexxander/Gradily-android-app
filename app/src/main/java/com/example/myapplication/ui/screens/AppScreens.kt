@@ -207,19 +207,26 @@ fun ProfileScreen(
                 // Role-specific content
                 if (user?.role == "STUDENT") {
                     val enrolledStudents by viewModel.getEnrolledStudents().collectAsState(initial = emptyList())
-                    var totalGpa = 0.0
-                    var classesGraded = 0
+                    val assessmentsFlow = remember(enrolledStudents) { viewModel.observeAssessmentsForStudents(enrolledStudents.map { it.studentId }) }
+                    val assessments by assessmentsFlow.collectAsState(initial = emptyMap())
+                    var cgpa by remember { mutableStateOf(0.0) }
                     
-                    enrolledStudents.forEach { student ->
-                        val assessment by viewModel.getAssessmentByStudentId(student.studentId).collectAsState(initial = null)
-                        val gpa = viewModel.calculateGPA(assessment)
-                        if (gpa > 0.0) {
-                            totalGpa += gpa
-                            classesGraded++
+                    LaunchedEffect(enrolledStudents, assessments) {
+                        if (enrolledStudents.isNotEmpty()) {
+                            var totalGpa = 0.0
+                            var classesGraded = 0
+                            for (student in enrolledStudents) {
+                                val gpa = viewModel.calculateGPA(assessments[student.studentId])
+                                if (gpa > 0.0) {
+                                    totalGpa += gpa
+                                    classesGraded++
+                                }
+                            }
+                            cgpa = if (classesGraded > 0) totalGpa / classesGraded else 0.0
+                        } else {
+                            cgpa = 0.0
                         }
                     }
-                    
-                    val cgpa = if (classesGraded > 0) totalGpa / classesGraded else 0.0
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),

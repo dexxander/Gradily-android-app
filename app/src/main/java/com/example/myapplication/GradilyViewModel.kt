@@ -15,11 +15,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.channels.awaitClose
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
@@ -399,7 +395,13 @@ class GradilyViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun updateAssessment(assessment: Assessment) {
-        firestore.collection("assessments").document(assessment.gradeId).set(assessment)
+        if (assessment.gradeId.isEmpty()) {
+            val ref = firestore.collection("assessments").document()
+            assessment.gradeId = ref.id
+            ref.set(assessment)
+        } else {
+            firestore.collection("assessments").document(assessment.gradeId).set(assessment)
+        }
     }
 
     fun calculateGPA(assessment: Assessment?): Double {
@@ -469,15 +471,28 @@ class GradilyViewModel(application: Application) : AndroidViewModel(application)
         if (studentIds.isEmpty()) return result
         
         try {
-            // Firestore 'in' query supports up to 10 items. For larger classes we could chunk it,
-            // but for simplicity here we will just fetch them individually in parallel or loop.
+            // Fetch individually to avoid whereIn limit
             for (id in studentIds) {
-                val snapshot = firestore.collection("assessments").document(id).get().await()
-                result[id] = snapshot.toObject(Assessment::class.java)
+                val snapshot = firestore.collection("assessments").whereEqualTo("studentId", id).limit(1).get().await()
+                if (!snapshot.isEmpty) {
+                    result[id] = snapshot.documents[0].toObject(Assessment::class.java)
+                } else {
+                    result[id] = null
+                }
             }
         } catch (e: Exception) {
             Log.e("GradilyViewModel", "Error fetching assessments", e)
         }
         return result
+    }
+
+    fun observeAssessmentsForStudents(studentIds: List<String>): Flow<Map<String, Assessment?>> {
+        if (studentIds.isEmpty()) return flowOf(emptyMap())
+        val flows = studentIds.map { id ->
+            getAssessmentByStudentId(id).map { id to it }
+        }
+        return combine(flows) { array: Array<Pair<String, Assessment?>> ->
+            array.toMap()
+        }
     }
 }
