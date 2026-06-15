@@ -2,9 +2,7 @@ package com.example.myapplication.ui.screens
 
 import android.widget.Toast
 import androidx.compose.animation.*
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -30,11 +28,32 @@ import com.example.myapplication.ui.theme.*
 const val WEB_CLIENT_ID = "667003870196-5r1qao1v97f20urlrptluuko8e78s7h1.apps.googleusercontent.com"
 
 @Composable
+fun FloatingEmoji(emoji: String) {
+    val infiniteTransition = rememberInfiniteTransition(label = "emoji_float")
+    val yOffset by infiniteTransition.animateFloat(
+        initialValue = -10f,
+        targetValue = 10f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2000, easing = EaseInOutSine),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "emoji_float_offset"
+    )
+    Text(
+        emoji,
+        fontSize = 64.sp,
+        modifier = Modifier.padding(bottom = 16.dp).offset(y = yOffset.dp)
+    )
+}
+
+@Composable
 fun MainAuthScreen(
     onNavigateToLogin: (String) -> Unit,
     onNavigateToSignUp: (String) -> Unit
 ) {
     var selectedRole by remember { mutableStateOf<String?>(null) }
+    var isVisible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { isVisible = true }
 
     GradilyBackground {
         Column(
@@ -47,12 +66,7 @@ fun MainAuthScreen(
         ) {
             Spacer(modifier = Modifier.weight(0.3f))
 
-            // App title
-            Text(
-                "🎓",
-                fontSize = 64.sp,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
+            FloatingEmoji("🎓")
             Text(
                 "Gradily",
                 fontSize = 42.sp,
@@ -66,97 +80,107 @@ fun MainAuthScreen(
                 modifier = Modifier.padding(bottom = 48.dp)
             )
 
-            // Role selection cards
-            Text(
-                "I am a...",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Medium,
-                color = TextSecondary,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                // Lecturer card
-                val isLecturer = selectedRole == "LECTURER"
-                val lecturerScale by animateFloatAsState(if (isLecturer) 1.05f else 1f)
-                
-                GlassCard(
-                    modifier = Modifier
-                        .weight(1f)
-                        .scale(lecturerScale)
-                        .clip(RoundedCornerShape(20.dp))
-                        .clickable { selectedRole = "LECTURER" }
-                        .then(
-                            if (isLecturer) {
-                                Modifier.background(
-                                    Brush.linearGradient(listOf(SurfaceGreen, MediumGreen)),
-                                    RoundedCornerShape(20.dp)
-                                )
-                            } else Modifier
-                        )
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("👨‍🏫", fontSize = 36.sp)
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text("Lecturer", color = TextPrimary, fontWeight = FontWeight.SemiBold)
-                        Text("Manage grades", color = TextMuted, fontSize = 11.sp)
-                    }
-                }
-
-                // Student card
-                val isStudent = selectedRole == "STUDENT"
-                val studentScale by animateFloatAsState(if (isStudent) 1.05f else 1f)
-                
-                GlassCard(
-                    modifier = Modifier
-                        .weight(1f)
-                        .scale(studentScale)
-                        .clip(RoundedCornerShape(20.dp))
-                        .clickable { selectedRole = "STUDENT" }
-                        .then(
-                            if (isStudent) {
-                                Modifier.background(
-                                    Brush.linearGradient(listOf(SurfaceGreen, MediumGreen)),
-                                    RoundedCornerShape(20.dp)
-                                )
-                            } else Modifier
-                        )
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("🎒", fontSize = 36.sp)
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text("Student", color = TextPrimary, fontWeight = FontWeight.SemiBold)
-                        Text("View grades", color = TextMuted, fontSize = 11.sp)
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(32.dp))
-
             AnimatedVisibility(
-                visible = selectedRole != null,
-                enter = fadeIn() + slideInVertically { it / 2 },
-                exit = fadeOut()
+                visible = isVisible,
+                enter = slideInVertically(initialOffsetY = { it / 3 }) + fadeIn(tween(800))
             ) {
-                Column {
-                    GradilyButton(
-                        text = "Login",
-                        onClick = { selectedRole?.let { onNavigateToLogin(it) } }
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        "I am a...",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = TextSecondary,
+                        modifier = Modifier.padding(bottom = 16.dp)
                     )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    GradilyOutlineButton(
-                        text = "Create Account",
-                        onClick = { selectedRole?.let { onNavigateToSignUp(it) } }
-                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        val isLecturer = selectedRole == "LECTURER"
+                        val lecturerScale by animateFloatAsState(if (isLecturer) 1.05f else 1f, label = "scale")
+                        
+                        GlassCard(
+                            modifier = Modifier
+                                .weight(1f)
+                                .scale(lecturerScale)
+                                .clip(RoundedCornerShape(20.dp))
+                                .clickable { selectedRole = "LECTURER" }
+                                .then(
+                                    if (isLecturer) {
+                                        Modifier.background(
+                                            Brush.linearGradient(listOf(SurfaceGreen, MediumGreen)),
+                                            RoundedCornerShape(20.dp)
+                                        )
+                                    } else Modifier
+                                )
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp)
+                            ) {
+                                Text("👨‍🏫", fontSize = 32.sp)
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    "Lecturer",
+                                    color = if (isLecturer) Color.White else TextPrimary,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
+
+                        val isStudent = selectedRole == "STUDENT"
+                        val studentScale by animateFloatAsState(if (isStudent) 1.05f else 1f, label = "scale")
+
+                        GlassCard(
+                            modifier = Modifier
+                                .weight(1f)
+                                .scale(studentScale)
+                                .clip(RoundedCornerShape(20.dp))
+                                .clickable { selectedRole = "STUDENT" }
+                                .then(
+                                    if (isStudent) {
+                                        Modifier.background(
+                                            Brush.linearGradient(listOf(AccentBlue, AccentPurple)),
+                                            RoundedCornerShape(20.dp)
+                                        )
+                                    } else Modifier
+                                )
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp)
+                            ) {
+                                Text("🎒", fontSize = 32.sp)
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    "Student",
+                                    color = if (isStudent) Color.White else TextPrimary,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(32.dp))
+
+                    AnimatedVisibility(
+                        visible = selectedRole != null,
+                        enter = expandVertically() + fadeIn(),
+                        exit = shrinkVertically() + fadeOut()
+                    ) {
+                        Column {
+                            GradilyButton(
+                                text = "Login",
+                                onClick = { selectedRole?.let { onNavigateToLogin(it) } }
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            GradilyOutlineButton(
+                                text = "Create Account",
+                                onClick = { selectedRole?.let { onNavigateToSignUp(it) } }
+                            )
+                        }
+                    }
                 }
             }
 
@@ -171,7 +195,8 @@ fun AnimatedButton(onClick: () -> Unit, content: @Composable () -> Unit) {
     val isPressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.95f else 1f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+        label = "button_scale"
     )
 
     Box(
@@ -247,6 +272,9 @@ fun LoginScreen(
     val context = LocalContext.current
 
     val roleLabel = if (role == "LECTURER") "Lecturer" else "Student"
+    
+    var isVisible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { isVisible = true }
 
     GradilyBackground {
         Column(
@@ -258,63 +286,64 @@ fun LoginScreen(
         ) {
             Spacer(modifier = Modifier.weight(0.15f))
 
-            Text(
-                if (role == "LECTURER") "👨‍🏫" else "🎒",
-                fontSize = 48.sp,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
+            FloatingEmoji(if (role == "LECTURER") "👨‍🏫" else "🎒")
             SectionHeader("Welcome Back")
             SectionSubtitle("Sign in as $roleLabel")
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            GlassCard(modifier = Modifier.fillMaxWidth()) {
-                GradilyTextField(
-                    value = email,
-                    onValueChange = { email = it },
-                    label = "Email"
-                )
-                GradilyTextField(
-                    value = password,
-                    onValueChange = { password = it },
-                    label = "Password",
-                    isPassword = true
-                )
-                Spacer(modifier = Modifier.height(24.dp))
-                GradilyButton(
-                    text = if (isLoading) "Signing in..." else "Login",
-                    onClick = {
-                        isLoading = true
-                        viewModel.login(email, password, role) { success, msg ->
-                            isLoading = false
-                            if (success) {
-                                onLoginSuccess()
-                            } else {
-                                Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
-                            }
-                        }
-                    },
-                    enabled = !isLoading && !isGoogleLoading && email.isNotBlank() && password.isNotBlank()
-                )
-
-                AuthDivider()
-
-                GoogleSignInButton(
-                    isLoading = isGoogleLoading,
-                    onClick = {
-                        if (!isLoading && !isGoogleLoading) {
-                            isGoogleLoading = true
-                            viewModel.signInWithGoogle(context, WEB_CLIENT_ID, role) { success, msg ->
-                                isGoogleLoading = false
+            AnimatedVisibility(
+                visible = isVisible,
+                enter = slideInVertically(initialOffsetY = { it / 2 }) + fadeIn(tween(600))
+            ) {
+                GlassCard(modifier = Modifier.fillMaxWidth()) {
+                    GradilyTextField(
+                        value = email,
+                        onValueChange = { email = it },
+                        label = "Email"
+                    )
+                    GradilyTextField(
+                        value = password,
+                        onValueChange = { password = it },
+                        label = "Password",
+                        isPassword = true
+                    )
+                    Spacer(modifier = Modifier.height(24.dp))
+                    GradilyButton(
+                        text = if (isLoading) "Signing in..." else "Login",
+                        onClick = {
+                            isLoading = true
+                            viewModel.login(email, password, role) { success, msg ->
+                                isLoading = false
                                 if (success) {
                                     onLoginSuccess()
                                 } else {
                                     Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
                                 }
                             }
+                        },
+                        enabled = !isLoading && !isGoogleLoading && email.isNotBlank() && password.isNotBlank()
+                    )
+
+                    AuthDivider()
+
+                    GoogleSignInButton(
+                        isLoading = isGoogleLoading,
+                        onClick = {
+                            if (!isLoading && !isGoogleLoading) {
+                                isGoogleLoading = true
+                                viewModel.signInWithGoogle(context, WEB_CLIENT_ID, role) { success, msg ->
+                                    isGoogleLoading = false
+                                    if (success) {
+                                        onLoginSuccess()
+                                    } else {
+                                        Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            }
                         }
-                    }
-                )
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.weight(0.3f))
@@ -342,6 +371,9 @@ fun SignUpScreen(
 
     val roleLabel = if (role == "LECTURER") "Lecturer" else "Student"
 
+    var isVisible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { isVisible = true }
+
     GradilyBackground {
         Column(
             modifier = Modifier
@@ -352,77 +384,80 @@ fun SignUpScreen(
         ) {
             Spacer(modifier = Modifier.weight(0.1f))
 
-            Text(
-                if (role == "LECTURER") "👨‍🏫" else "🎒",
-                fontSize = 48.sp,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
+            FloatingEmoji(if (role == "LECTURER") "👨‍🏫" else "🎒")
             SectionHeader("Create Account")
             SectionSubtitle("Register as $roleLabel")
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            GlassCard(modifier = Modifier.fillMaxWidth()) {
-                GradilyTextField(
-                    value = email,
-                    onValueChange = { email = it },
-                    label = "Email"
-                )
-                GradilyTextField(
-                    value = password,
-                    onValueChange = { password = it },
-                    label = "Password",
-                    isPassword = true
-                )
-                GradilyTextField(
-                    value = confirmPassword,
-                    onValueChange = { confirmPassword = it },
-                    label = "Confirm Password",
-                    isPassword = true
-                )
-                Spacer(modifier = Modifier.height(24.dp))
-                GradilyButton(
-                    text = if (isLoading) "Creating..." else "Sign Up",
-                    onClick = {
-                        if (password != confirmPassword) {
-                            Toast.makeText(context, "Passwords do not match", Toast.LENGTH_SHORT).show()
-                        } else {
+            AnimatedVisibility(
+                visible = isVisible,
+                enter = slideInVertically(initialOffsetY = { it / 2 }) + fadeIn(tween(600))
+            ) {
+                GlassCard(modifier = Modifier.fillMaxWidth()) {
+                    GradilyTextField(
+                        value = email,
+                        onValueChange = { email = it },
+                        label = "Email"
+                    )
+                    GradilyTextField(
+                        value = password,
+                        onValueChange = { password = it },
+                        label = "Password",
+                        isPassword = true
+                    )
+                    GradilyTextField(
+                        value = confirmPassword,
+                        onValueChange = { confirmPassword = it },
+                        label = "Confirm Password",
+                        isPassword = true
+                    )
+                    Spacer(modifier = Modifier.height(24.dp))
+                    GradilyButton(
+                        text = if (isLoading) "Creating..." else "Sign Up",
+                        onClick = {
+                            if (password != confirmPassword) {
+                                Toast.makeText(context, "Passwords do not match", Toast.LENGTH_SHORT).show()
+                                return@GradilyButton
+                            }
                             isLoading = true
                             viewModel.signUp(email, password, role) { success, msg ->
                                 isLoading = false
-                                Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
-                                if (success) onSignUpSuccess()
-                            }
-                        }
-                    },
-                    enabled = !isLoading && !isGoogleLoading && email.isNotBlank() && password.isNotBlank() && confirmPassword.isNotBlank()
-                )
-
-                AuthDivider()
-
-                GoogleSignInButton(
-                    isLoading = isGoogleLoading,
-                    onClick = {
-                        if (!isLoading && !isGoogleLoading) {
-                            isGoogleLoading = true
-                            viewModel.signInWithGoogle(context, WEB_CLIENT_ID, role) { success, msg ->
-                                isGoogleLoading = false
                                 if (success) {
-                                    // Signed up/logged in successfully
                                     onSignUpSuccess()
                                 } else {
                                     Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
                                 }
                             }
+                        },
+                        enabled = !isLoading && !isGoogleLoading && email.isNotBlank() && password.isNotBlank() && confirmPassword.isNotBlank()
+                    )
+
+                    AuthDivider()
+
+                    GoogleSignInButton(
+                        isLoading = isGoogleLoading,
+                        onClick = {
+                            if (!isLoading && !isGoogleLoading) {
+                                isGoogleLoading = true
+                                viewModel.signInWithGoogle(context, WEB_CLIENT_ID, role) { success, msg ->
+                                    isGoogleLoading = false
+                                    if (success) {
+                                        onSignUpSuccess()
+                                    } else {
+                                        Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            }
                         }
-                    }
-                )
+                    )
+                }
             }
 
-            Spacer(modifier = Modifier.weight(0.2f))
+            Spacer(modifier = Modifier.weight(0.3f))
 
             TextButton(onClick = onNavigateBack) {
-                Text("← Back to role selection", color = TextMuted, fontSize = 14.sp)
+                Text("← Back to login", color = TextMuted, fontSize = 14.sp)
             }
         }
     }

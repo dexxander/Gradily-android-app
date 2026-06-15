@@ -136,9 +136,63 @@ fun GradilyApp(viewModel: GradilyViewModel) {
                 role = role,
                 onNavigateBack = { navController.popBackStack() },
                 onSignUpSuccess = {
-                    navController.navigate("splash") {
+                    val destination = if (role == "STUDENT") "student_dashboard" else "class_list"
+                    navController.navigate(destination) {
                         popUpTo("main_auth") { inclusive = true }
                     }
+                }
+            )
+        }
+
+        // ====== MAIN DRAWER SCREENS ======
+        composable(
+            "profile",
+            enterTransition = { fadeInSmooth() },
+            exitTransition = { fadeOutSmooth() }
+        ) {
+            ProfileScreen(
+                viewModel = viewModel,
+                onNavigateHome = {
+                    val role = viewModel.currentUser.value?.role
+                    val destination = if (role == "STUDENT") "student_dashboard" else "class_list"
+                    navController.navigate(destination) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                },
+                onNavigateSettings = {
+                    navController.navigate("settings") {
+                        popUpTo("settings") { inclusive = true }
+                    }
+                },
+                onLogout = {
+                    viewModel.logout()
+                    navController.navigate("main_auth") { popUpTo(0) }
+                }
+            )
+        }
+
+        composable(
+            "settings",
+            enterTransition = { fadeInSmooth() },
+            exitTransition = { fadeOutSmooth() }
+        ) {
+            SettingsScreen(
+                user = viewModel.currentUser.collectAsState().value,
+                onNavigateHome = {
+                    val role = viewModel.currentUser.value?.role
+                    val destination = if (role == "STUDENT") "student_dashboard" else "class_list"
+                    navController.navigate(destination) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                },
+                onNavigateProfile = {
+                    navController.navigate("profile") {
+                        popUpTo("profile") { inclusive = true }
+                    }
+                },
+                onLogout = {
+                    viewModel.logout()
+                    navController.navigate("main_auth") { popUpTo(0) }
                 }
             )
         }
@@ -153,6 +207,8 @@ fun GradilyApp(viewModel: GradilyViewModel) {
                 viewModel = viewModel,
                 onCreateClass = { navController.navigate("class_creation") },
                 onManageClass = { navController.navigate("class_student_content") },
+                onNavigateProfile = { navController.navigate("profile") },
+                onNavigateSettings = { navController.navigate("settings") },
                 onLogout = {
                     viewModel.logout()
                     navController.navigate("main_auth") { popUpTo(0) }
@@ -221,6 +277,8 @@ fun GradilyApp(viewModel: GradilyViewModel) {
                     viewModel.setCurrentStudent(student)
                     navController.navigate("student_subject_detail/${student.studentId}")
                 },
+                onNavigateProfile = { navController.navigate("profile") },
+                onNavigateSettings = { navController.navigate("settings") },
                 onLogout = {
                     viewModel.logout()
                     navController.navigate("main_auth") { popUpTo(0) }

@@ -35,6 +35,8 @@ fun GradilyDrawer(
     drawerState: DrawerState,
     user: User?,
     onNavigateHome: () -> Unit,
+    onNavigateProfile: () -> Unit,
+    onNavigateSettings: () -> Unit,
     onLogout: () -> Unit,
     content: @Composable () -> Unit
 ) {
@@ -101,7 +103,6 @@ fun GradilyDrawer(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Menu Items
                     DrawerItem(
                         icon = Icons.Default.Home,
                         label = "Home",
@@ -116,6 +117,7 @@ fun GradilyDrawer(
                         label = "Profile",
                         onClick = {
                             scope.launch { drawerState.close() }
+                            onNavigateProfile()
                         }
                     )
 
@@ -124,23 +126,24 @@ fun GradilyDrawer(
                         label = "Settings",
                         onClick = {
                             scope.launch { drawerState.close() }
+                            onNavigateSettings()
                         }
                     )
 
                     Spacer(modifier = Modifier.weight(1f))
 
-                    // Logout
+                    HorizontalDivider(color = GlassBorder, modifier = Modifier.padding(horizontal = 24.dp))
+                    
                     DrawerItem(
                         icon = Icons.Default.ExitToApp,
                         label = "Logout",
-                        tint = AccentRed,
                         onClick = {
                             scope.launch { drawerState.close() }
                             onLogout()
-                        }
+                        },
+                        tint = AccentRed
                     )
-                    
-                    Spacer(modifier = Modifier.height(32.dp))
+                    Spacer(modifier = Modifier.height(24.dp))
                 }
             }
         },
@@ -149,31 +152,21 @@ fun GradilyDrawer(
 }
 
 @Composable
-fun DrawerItem(
+private fun DrawerItem(
     icon: ImageVector,
     label: String,
-    tint: Color = TextPrimary,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    tint: Color = TextPrimary
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(horizontal = 24.dp, vertical = 16.dp),
+            .padding(horizontal = 32.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = label,
-            tint = tint,
-            modifier = Modifier.size(24.dp)
-        )
+        Icon(icon, contentDescription = label, tint = tint, modifier = Modifier.size(24.dp))
         Spacer(modifier = Modifier.width(16.dp))
-        Text(
-            text = label,
-            color = tint,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Medium
-        )
+        Text(label, color = tint, fontSize = 16.sp, fontWeight = FontWeight.Medium)
     }
 }

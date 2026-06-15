@@ -42,6 +42,8 @@ import kotlinx.coroutines.launch
 fun StudentDashboardScreen(
     viewModel: GradilyViewModel,
     onViewSubject: (Student) -> Unit,
+    onNavigateProfile: () -> Unit,
+    onNavigateSettings: () -> Unit,
     onLogout: () -> Unit
 ) {
     val enrolledStudents by viewModel.getEnrolledStudents().collectAsState(initial = emptyList())
@@ -80,6 +82,8 @@ fun StudentDashboardScreen(
         drawerState = drawerState,
         user = user,
         onNavigateHome = { /* Already on home */ },
+        onNavigateProfile = onNavigateProfile,
+        onNavigateSettings = onNavigateSettings,
         onLogout = onLogout
     ) {
         GradilyBackground {

@@ -45,6 +45,8 @@ fun ClassListScreen(
     viewModel: GradilyViewModel,
     onCreateClass: () -> Unit,
     onManageClass: (Subject) -> Unit,
+    onNavigateProfile: () -> Unit,
+    onNavigateSettings: () -> Unit,
     onLogout: () -> Unit
 ) {
     val subjects by viewModel.getSubjects().collectAsState(initial = emptyList())
@@ -72,6 +74,8 @@ fun ClassListScreen(
         drawerState = drawerState,
         user = user,
         onNavigateHome = { /* Already on home */ },
+        onNavigateProfile = onNavigateProfile,
+        onNavigateSettings = onNavigateSettings,
         onLogout = onLogout
     ) {
         GradilyBackground {

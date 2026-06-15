@@ -14,14 +14,15 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -30,6 +31,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.myapplication.R
 import com.example.myapplication.ui.theme.*
+import kotlinx.coroutines.launch
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearOutSlowInEasing
 
 /**
  * Full-screen animated background.
@@ -62,7 +67,37 @@ fun GradilyBackground(
         label = "phase2"
     )
 
-    Box(modifier = modifier.fillMaxSize().background(DarkBackground)) {
+    val rippleRadius = remember { Animatable(0f) }
+    val rippleAlpha = remember { Animatable(0f) }
+    var rippleCenter by remember { mutableStateOf(Offset.Zero) }
+    val coroutineScope = rememberCoroutineScope()
+
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(DarkBackground)
+            .pointerInput(Unit) {
+                detectTapGestures { offset ->
+                    rippleCenter = offset
+                    coroutineScope.launch {
+                        rippleAlpha.snapTo(1f)
+                        rippleRadius.snapTo(0f)
+                        launch {
+                            rippleRadius.animateTo(
+                                targetValue = 1500f,
+                                animationSpec = tween(durationMillis = 1000, easing = LinearOutSlowInEasing)
+                            )
+                        }
+                        launch {
+                            rippleAlpha.animateTo(
+                                targetValue = 0f,
+                                animationSpec = tween(durationMillis = 1000, easing = LinearEasing)
+                            )
+                        }
+                    }
+                }
+            }
+    ) {
         // Animated gradient blobs
         androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
             val w = size.width
@@ -99,6 +134,20 @@ fun GradilyBackground(
                 radius = r2,
                 center = Offset(x2, y2)
             )
+
+            if (rippleAlpha.value > 0f) {
+                drawCircle(
+                    color = AccentPurple.copy(alpha = rippleAlpha.value * 0.4f),
+                    radius = rippleRadius.value,
+                    center = rippleCenter
+                )
+                drawCircle(
+                    color = LightGreen.copy(alpha = rippleAlpha.value * 0.6f),
+                    radius = rippleRadius.value * 0.8f,
+                    center = rippleCenter,
+                    style = Stroke(width = 8f)
+                )
+            }
         }
         
         // Subtle overlay to keep text readable without hiding the animation

@@ -136,9 +136,12 @@ class GradilyViewModel(application: Application) : AndroidViewModel(application)
                 val user = User(id = uid, email = email, role = role)
                 firestore.collection("users").document(uid).set(user)
                     .addOnSuccessListener {
+                        _currentUser.value = user
                         onResult(true, "Account created successfully")
                     }
                     .addOnFailureListener { e ->
+                        // Even if firestore fails, they are logged into Auth. Let's sign out to be safe.
+                        auth.signOut()
                         onResult(false, "Failed to save user data")
                     }
             }
