@@ -32,7 +32,7 @@ import com.example.myapplication.R
 import com.example.myapplication.ui.theme.*
 
 /**
- * Full-screen background with the gradient image overlay.
+ * Full-screen animated background.
  * Uses fillMaxSize to cover the entire window including system bars.
  */
 @Composable
@@ -40,23 +40,76 @@ fun GradilyBackground(
     modifier: Modifier = Modifier,
     content: @Composable BoxScope.() -> Unit
 ) {
-    Box(modifier = modifier.fillMaxSize()) {
-        // Background image - fills entire screen
-        Image(
-            painter = painterResource(id = R.drawable.app_bg),
-            contentDescription = null,
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop
-        )
-        // Dark overlay for readability
+    val infiniteTransition = rememberInfiniteTransition(label = "bg_anim")
+    
+    val phase1 by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 2f * Math.PI.toFloat(),
+        animationSpec = infiniteRepeatable(
+            animation = tween(15000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "phase1"
+    )
+    
+    val phase2 by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 2f * Math.PI.toFloat(),
+        animationSpec = infiniteRepeatable(
+            animation = tween(20000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "phase2"
+    )
+
+    Box(modifier = modifier.fillMaxSize().background(DarkBackground)) {
+        // Animated gradient blobs
+        androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
+            val w = size.width
+            val h = size.height
+            
+            val cx = w / 2f
+            val cy = h / 2f
+            
+            val r1 = w * 0.85f
+            val r2 = w * 0.95f
+            
+            val x1 = cx + Math.cos(phase1.toDouble()).toFloat() * (w * 0.4f)
+            val y1 = cy + Math.sin(phase1.toDouble()).toFloat() * (h * 0.3f)
+            
+            val x2 = cx + Math.sin(phase2.toDouble()).toFloat() * (w * 0.3f)
+            val y2 = cy + Math.cos(phase2.toDouble()).toFloat() * (h * 0.4f)
+            
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(LightGreen.copy(alpha = 0.3f), Color.Transparent),
+                    center = Offset(x1, y1),
+                    radius = r1
+                ),
+                radius = r1,
+                center = Offset(x1, y1)
+            )
+            
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(AccentBlue.copy(alpha = 0.25f), Color.Transparent),
+                    center = Offset(x2, y2),
+                    radius = r2
+                ),
+                radius = r2,
+                center = Offset(x2, y2)
+            )
+        }
+        
+        // Subtle overlay to keep text readable without hiding the animation
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
-                            Color(0xCC0A0F0D),
-                            Color(0xE60A0F0D)
+                            Color(0x33000000), // 20% black
+                            Color(0x66000000)  // 40% black
                         )
                     )
                 )
