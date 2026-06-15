@@ -291,6 +291,7 @@ fun ClassCreationScreen(
 ) {
     var className by remember { mutableStateOf("") }
     var creditHours by remember { mutableStateOf("3") }
+    var enrollmentOpen by remember { mutableStateOf(false) }
 
     GradilyBackground {
         Column(
@@ -322,12 +323,31 @@ fun ClassCreationScreen(
                     onValueChange = { creditHours = it },
                     label = "e.g. 3"
                 )
+                Spacer(modifier = Modifier.height(16.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text("Open to everyone", color = GradilyTheme.colors.textPrimary, fontWeight = FontWeight.Medium, fontSize = 14.sp)
+                        Text("Students can self-enroll", color = GradilyTheme.colors.textMuted, fontSize = 12.sp)
+                    }
+                    androidx.compose.material3.Switch(
+                        checked = enrollmentOpen,
+                        onCheckedChange = { enrollmentOpen = it },
+                        colors = androidx.compose.material3.SwitchDefaults.colors(
+                            checkedThumbColor = Color.White,
+                            checkedTrackColor = GradilyTheme.colors.accentBlue
+                        )
+                    )
+                }
                 Spacer(modifier = Modifier.height(32.dp))
                 GradilyButton(
                     text = "Create Class",
                     onClick = {
                         if (className.isNotBlank()) {
-                            viewModel.createSubject(className, creditHours.toIntOrNull() ?: 3)
+                            viewModel.createSubject(className, creditHours.toIntOrNull() ?: 3, enrollmentOpen)
                             onNavigateBack()
                         }
                     },

@@ -13,6 +13,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.*
@@ -180,23 +181,35 @@ fun StudentDashboardScreen(
                     }
                 }
 
-                SectionHeader("My Courses")
-                SectionSubtitle("${enrolledStudents.size} ${if (enrolledStudents.size == 1) "course" else "courses"} enrolled")
+                val openSubjects by viewModel.getOpenSubjects().collectAsState(initial = emptyList())
+                val enrolledSubjectIds = enrolledStudents.map { it.subjectId }.toSet()
+                val availableOpenSubjects = openSubjects.filter { it.subjectId !in enrolledSubjectIds }
 
-                if (enrolledStudents.isEmpty()) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("📭", fontSize = 48.sp)
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text("No courses yet", color = GradilyTheme.colors.textSecondary, fontSize = 18.sp, fontWeight = FontWeight.Medium)
-                            Text("Your lecturer will add you to a class", color = GradilyTheme.colors.textMuted, fontSize = 14.sp, textAlign = TextAlign.Center)
-                        }
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(bottom = 32.dp)
+                ) {
+                    item {
+                        SectionHeader("My Courses")
+                        SectionSubtitle("${enrolledStudents.size} ${if (enrolledStudents.size == 1) "course" else "courses"} enrolled")
                     }
-                } else {
-                    LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+
+                    if (enrolledStudents.isEmpty()) {
+                        item {
+                            Box(
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text("📭", fontSize = 48.sp)
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    Text("No courses yet", color = GradilyTheme.colors.textSecondary, fontSize = 18.sp, fontWeight = FontWeight.Medium)
+                                    Text("Your lecturer will add you to a class", color = GradilyTheme.colors.textMuted, fontSize = 14.sp, textAlign = TextAlign.Center)
+                                }
+                            }
+                        }
+                    } else {
                         items(enrolledStudents, key = { it.studentId }) { student ->
                             val assessmentFlow = remember(student.studentId) { viewModel.getAssessmentByStudentId(student.studentId) }
                             val assessment by assessmentFlow.collectAsState(initial = null)
@@ -253,6 +266,49 @@ fun StudentDashboardScreen(
                             }
                         }
                     }
+
+                    if (availableOpenSubjects.isNotEmpty()) {
+                        item {
+                            Spacer(modifier = Modifier.height(16.dp))
+                            SectionHeader("Discover Open Classes")
+                            SectionSubtitle("Self-enroll into available courses")
+                        }
+
+                        items(availableOpenSubjects, key = { it.subjectId }) { subject ->
+                            GlassCard(
+                                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            subject.courseName,
+                                            color = GradilyTheme.colors.textPrimary,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 16.sp
+                                        )
+                                        Text(
+                                            "${subject.creditHours} Credits",
+                                            color = GradilyTheme.colors.textMuted,
+                                            fontSize = 12.sp
+                                        )
+                                    }
+                                    androidx.compose.material3.Button(
+                                        onClick = { viewModel.selfEnroll(subject) },
+                                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                                            containerColor = GradilyTheme.colors.accentGreen
+                                        ),
+                                        shape = RoundedCornerShape(12.dp)
+                                    ) {
+                                        Text("Enroll", color = Color.White, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -286,20 +342,35 @@ fun StudentSubjectDetailScreen(
             // Top bar
             Row(
                 modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(
+                        onClick = onNavigateBack,
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .background(GradilyTheme.colors.glassBg)
+                    ) {
+                        Icon(Icons.Default.ArrowBack, "Back", tint = GradilyTheme.colors.textPrimary)
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text(subjectName, color = GradilyTheme.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                        Text("Grade Report", color = GradilyTheme.colors.textMuted, fontSize = 13.sp)
+                    }
+                }
+                
                 IconButton(
-                    onClick = onNavigateBack,
+                    onClick = {
+                        viewModel.unenroll(student)
+                        onNavigateBack()
+                    },
                     modifier = Modifier
                         .clip(CircleShape)
                         .background(GradilyTheme.colors.glassBg)
                 ) {
-                    Icon(Icons.Default.ArrowBack, "Back", tint = GradilyTheme.colors.textPrimary)
-                }
-                Spacer(modifier = Modifier.width(12.dp))
-                Column {
-                    Text(subjectName, color = GradilyTheme.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 20.sp)
-                    Text("Grade Report", color = GradilyTheme.colors.textMuted, fontSize = 13.sp)
+                    Icon(Icons.Default.Delete, "Unenroll", tint = GradilyTheme.colors.accentRed)
                 }
             }
 

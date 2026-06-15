@@ -4,5 +4,6 @@ data class Subject(
     var subjectId: String = "",
     var courseName: String = "",
     var creditHours: Int = 0,
-    var lecturerId: String = ""
+    var lecturerId: String = "",
+    var enrollmentOpen: Boolean = false
 )

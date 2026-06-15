@@ -281,11 +281,53 @@ class GradilyViewModel(application: Application) : AndroidViewModel(application)
         awaitClose { subscription.remove() }
     }
 
-    fun createSubject(courseName: String, creditHours: Int) {
+    fun createSubject(courseName: String, creditHours: Int, enrollmentOpen: Boolean = false) {
         val lecturerId = _currentUser.value?.id ?: return
         val ref = firestore.collection("subjects").document()
-        val subject = Subject(subjectId = ref.id, courseName = courseName, creditHours = creditHours, lecturerId = lecturerId)
+        val subject = Subject(subjectId = ref.id, courseName = courseName, creditHours = creditHours, lecturerId = lecturerId, enrollmentOpen = enrollmentOpen)
         ref.set(subject)
+    }
+
+    fun getOpenSubjects(): Flow<List<Subject>> = callbackFlow {
+        val subscription = firestore.collection("subjects")
+            .whereEqualTo("enrollmentOpen", true)
+            .addSnapshotListener { snapshot, _ ->
+                if (snapshot != null) {
+                    trySend(snapshot.toObjects(Subject::class.java))
+                }
+            }
+        awaitClose { subscription.remove() }
+    }
+
+    fun selfEnroll(subject: Subject) {
+        val user = _currentUser.value ?: return
+        val studentName = user.name.ifBlank { user.email.substringBefore("@") }
+        val email = user.email
+
+        val studentRef = firestore.collection("students").document()
+        val studentId = studentRef.id
+        val student = Student(studentId = studentId, studentName = studentName, email = email, subjectId = subject.subjectId)
+        
+        studentRef.set(student).addOnSuccessListener {
+            val assessmentRef = firestore.collection("assessments").document()
+            val assessment = Assessment(gradeId = assessmentRef.id, studentId = studentId, subjectId = subject.subjectId)
+            assessmentRef.set(assessment)
+        }
+    }
+
+    fun unenroll(student: Student) {
+        // Delete student record
+        firestore.collection("students").document(student.studentId).delete()
+        
+        // Find and delete the associated assessment
+        firestore.collection("assessments")
+            .whereEqualTo("studentId", student.studentId)
+            .get()
+            .addOnSuccessListener { querySnapshot ->
+                for (doc in querySnapshot.documents) {
+                    doc.reference.delete()
+                }
+            }
     }
 
     fun setCurrentSubject(subject: Subject) {
