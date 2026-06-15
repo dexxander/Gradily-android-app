@@ -326,6 +326,7 @@ fun StudentSubjectDetailScreen(
     val gpa = viewModel.calculateGPA(assessment)
     val scope = rememberCoroutineScope()
     var subjectName by remember { mutableStateOf("Loading...") }
+    var showUnenrollConfirmation by remember { mutableStateOf(false) }
 
     LaunchedEffect(student.subjectId) {
         val subject = viewModel.getSubjectById(student.subjectId)
@@ -362,10 +363,7 @@ fun StudentSubjectDetailScreen(
                 }
                 
                 IconButton(
-                    onClick = {
-                        viewModel.unenroll(student)
-                        onNavigateBack()
-                    },
+                    onClick = { showUnenrollConfirmation = true },
                     modifier = Modifier
                         .clip(CircleShape)
                         .background(GradilyTheme.colors.glassBg)
@@ -491,6 +489,34 @@ fun StudentSubjectDetailScreen(
                 item { ReadOnlyGradeCard("Assignment 2", assessment?.assign2 ?: 0.0, 25.0) }
                 item { ReadOnlyGradeCard("Final Exam", assessment?.finalExam ?: 0.0, 100.0) }
             }
+        }
+
+        if (showUnenrollConfirmation) {
+            androidx.compose.material3.AlertDialog(
+                onDismissRequest = { showUnenrollConfirmation = false },
+                title = { Text("Unenroll from Class", fontWeight = FontWeight.Bold) },
+                text = { Text("Are you sure you want to unenroll from '$subjectName'? You will lose access to all class materials and your grade data will be permanently deleted.") },
+                confirmButton = {
+                    androidx.compose.material3.TextButton(
+                        onClick = {
+                            viewModel.unenroll(student)
+                            showUnenrollConfirmation = false
+                            onNavigateBack()
+                        }
+                    ) {
+                        Text("Unenroll", color = GradilyTheme.colors.accentRed, fontWeight = FontWeight.Bold)
+                    }
+                },
+                dismissButton = {
+                    androidx.compose.material3.TextButton(onClick = { showUnenrollConfirmation = false }) {
+                        Text("Cancel", color = GradilyTheme.colors.textPrimary)
+                    }
+                },
+                containerColor = GradilyTheme.colors.surface,
+                titleContentColor = GradilyTheme.colors.textPrimary,
+                textContentColor = GradilyTheme.colors.textSecondary,
+                shape = RoundedCornerShape(16.dp)
+            )
         }
     }
 }

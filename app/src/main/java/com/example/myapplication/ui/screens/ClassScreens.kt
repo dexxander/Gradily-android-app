@@ -58,6 +58,7 @@ fun ClassListScreen(
     val scope = rememberCoroutineScope()
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     var searchQuery by remember { mutableStateOf("") }
+    var subjectToDelete by remember { mutableStateOf<Subject?>(null) }
 
     GradilyDrawer(
         drawerState = drawerState,
@@ -264,7 +265,7 @@ fun ClassListScreen(
                                             Text("Manage", color = Color.Black, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
                                         }
                                         IconButton(
-                                            onClick = { viewModel.deleteSubject(subject) },
+                                            onClick = { subjectToDelete = subject },
                                             modifier = Modifier
                                                 .size(40.dp)
                                                 .clip(RoundedCornerShape(12.dp))
@@ -279,6 +280,33 @@ fun ClassListScreen(
                     }
                 }
             }
+        }
+
+        subjectToDelete?.let { subject ->
+            androidx.compose.material3.AlertDialog(
+                onDismissRequest = { subjectToDelete = null },
+                title = { Text("Delete Class", fontWeight = FontWeight.Bold) },
+                text = { Text("Are you sure you want to delete '${subject.courseName}'? This action cannot be undone.") },
+                confirmButton = {
+                    androidx.compose.material3.TextButton(
+                        onClick = {
+                            viewModel.deleteSubject(subject)
+                            subjectToDelete = null
+                        }
+                    ) {
+                        Text("Delete", color = GradilyTheme.colors.accentRed, fontWeight = FontWeight.Bold)
+                    }
+                },
+                dismissButton = {
+                    androidx.compose.material3.TextButton(onClick = { subjectToDelete = null }) {
+                        Text("Cancel", color = GradilyTheme.colors.textPrimary)
+                    }
+                },
+                containerColor = GradilyTheme.colors.surface,
+                titleContentColor = GradilyTheme.colors.textPrimary,
+                textContentColor = GradilyTheme.colors.textSecondary,
+                shape = RoundedCornerShape(16.dp)
+            )
         }
     }
 }

@@ -23,7 +23,8 @@ data class GradilyColors(
     val accentRed: Color,
     val accentPurple: Color,
     val blackBackground: Color,
-    val darkBackground: Color
+    val darkBackground: Color,
+    val surface: Color
 )
 
 val DarkGradilyColors = GradilyColors(
@@ -44,7 +45,8 @@ val DarkGradilyColors = GradilyColors(
     accentRed = Color(0xFFEF4444),
     accentPurple = Color(0xFFA78BFA),
     blackBackground = Color(0xFF000000),
-    darkBackground = Color(0xFF0A0F0D)
+    darkBackground = Color(0xFF0A0F0D),
+    surface = Color(0xFF15191C)
 )
 
 val LightGradilyColors = GradilyColors(
@@ -65,7 +67,8 @@ val LightGradilyColors = GradilyColors(
     accentRed = Color(0xFFDC2626),
     accentPurple = Color(0xFF7C3AED),
     blackBackground = Color(0xFFFFFFFF),
-    darkBackground = Color(0xFFF8FAFC)
+    darkBackground = Color(0xFFF8FAFC),
+    surface = Color(0xFFFFFFFF)
 )
 
 val LocalGradilyColors = compositionLocalOf { DarkGradilyColors }
