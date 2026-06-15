@@ -36,6 +36,10 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearOutSlowInEasing
 
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.draw.blur
+
 /**
  * Full-screen animated background.
  * Uses fillMaxSize to cover the entire window including system bars.
@@ -46,6 +50,8 @@ fun GradilyBackground(
     content: @Composable BoxScope.() -> Unit
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "bg_anim")
+    val haptic = LocalHapticFeedback.current
+    val colors = GradilyTheme.colors
     
     val phase1 by infiniteTransition.animateFloat(
         initialValue = 0f,
@@ -61,10 +67,20 @@ fun GradilyBackground(
         initialValue = 0f,
         targetValue = 2f * Math.PI.toFloat(),
         animationSpec = infiniteRepeatable(
-            animation = tween(20000, easing = LinearEasing),
+            animation = tween(22000, easing = LinearEasing),
             repeatMode = RepeatMode.Restart
         ),
         label = "phase2"
+    )
+    
+    val phase3 by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 2f * Math.PI.toFloat(),
+        animationSpec = infiniteRepeatable(
+            animation = tween(18000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "phase3"
     )
 
     val rippleRadius = remember { Animatable(0f) }
@@ -75,10 +91,11 @@ fun GradilyBackground(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(DarkBackground)
+            .background(GradilyTheme.colors.darkBackground)
             .pointerInput(Unit) {
                 detectTapGestures { offset ->
                     rippleCenter = offset
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     coroutineScope.launch {
                         rippleAlpha.snapTo(1f)
                         rippleRadius.snapTo(0f)
@@ -98,8 +115,12 @@ fun GradilyBackground(
                 }
             }
     ) {
-        // Animated gradient blobs
-        androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
+        // Animated gradient blobs with a heavy blur to create a "Mesh Gradient / Aurora" effect
+        androidx.compose.foundation.Canvas(
+            modifier = Modifier
+                .fillMaxSize()
+                .blur(80.dp) // The magic for Aurora effect
+        ) {
             val w = size.width
             val h = size.height
             
@@ -108,41 +129,34 @@ fun GradilyBackground(
             
             val r1 = w * 0.85f
             val r2 = w * 0.95f
+            val r3 = w * 0.75f
             
+            // Blob 1: Green
             val x1 = cx + Math.cos(phase1.toDouble()).toFloat() * (w * 0.4f)
             val y1 = cy + Math.sin(phase1.toDouble()).toFloat() * (h * 0.3f)
+            drawCircle(color = colors.lightGreen.copy(alpha = 0.4f), radius = r1, center = Offset(x1, y1))
             
+            // Blob 2: Blue
             val x2 = cx + Math.sin(phase2.toDouble()).toFloat() * (w * 0.3f)
             val y2 = cy + Math.cos(phase2.toDouble()).toFloat() * (h * 0.4f)
+            drawCircle(color = colors.accentBlue.copy(alpha = 0.35f), radius = r2, center = Offset(x2, y2))
             
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(LightGreen.copy(alpha = 0.3f), Color.Transparent),
-                    center = Offset(x1, y1),
-                    radius = r1
-                ),
-                radius = r1,
-                center = Offset(x1, y1)
-            )
-            
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(AccentBlue.copy(alpha = 0.25f), Color.Transparent),
-                    center = Offset(x2, y2),
-                    radius = r2
-                ),
-                radius = r2,
-                center = Offset(x2, y2)
-            )
+            // Blob 3: Purple (new)
+            val x3 = cx + Math.cos(phase3.toDouble() + Math.PI).toFloat() * (w * 0.35f)
+            val y3 = cy + Math.sin(phase3.toDouble() + Math.PI).toFloat() * (h * 0.25f)
+            drawCircle(color = colors.accentPurple.copy(alpha = 0.3f), radius = r3, center = Offset(x3, y3))
+        }
 
+        // Ripple layer (unblurred)
+        androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
             if (rippleAlpha.value > 0f) {
                 drawCircle(
-                    color = AccentPurple.copy(alpha = rippleAlpha.value * 0.4f),
+                    color = colors.accentPurple.copy(alpha = rippleAlpha.value * 0.4f),
                     radius = rippleRadius.value,
                     center = rippleCenter
                 )
                 drawCircle(
-                    color = LightGreen.copy(alpha = rippleAlpha.value * 0.6f),
+                    color = colors.textPrimary.copy(alpha = rippleAlpha.value * 0.6f),
                     radius = rippleRadius.value * 0.8f,
                     center = rippleCenter,
                     style = Stroke(width = 8f)
@@ -188,7 +202,7 @@ fun GlassCard(
     )
 
     val animatedBrush = Brush.linearGradient(
-        colors = listOf(GlassBg, GlassBgDark, GlassBg),
+        colors = listOf(GradilyTheme.colors.glassBg, GradilyTheme.colors.glassBgDark, GradilyTheme.colors.glassBg),
         start = Offset(translateAnim, translateAnim),
         end = Offset(translateAnim + 400f, translateAnim + 400f)
     )
@@ -196,7 +210,7 @@ fun GlassCard(
     Card(
         modifier = modifier
             .animateContentSize()
-            .border(1.dp, GlassBorder, RoundedCornerShape(cornerRadius)),
+            .border(1.dp, GradilyTheme.colors.glassBorder, RoundedCornerShape(cornerRadius)),
         shape = RoundedCornerShape(cornerRadius),
         colors = CardDefaults.cardColors(containerColor = Color.Transparent)
     ) {
@@ -227,22 +241,22 @@ fun GradilyTextField(
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
-        label = { Text(label, color = TextSecondary) },
+        label = { Text(label, color = GradilyTheme.colors.textSecondary) },
         visualTransformation = if (isPassword) {
             androidx.compose.ui.text.input.PasswordVisualTransformation()
         } else {
             androidx.compose.ui.text.input.VisualTransformation.None
         },
         colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = LightGreen,
-            unfocusedBorderColor = GlassBorder,
-            focusedTextColor = TextPrimary,
-            unfocusedTextColor = TextPrimary,
-            cursorColor = LightGreen,
-            focusedContainerColor = GlassBgDark,
-            unfocusedContainerColor = GlassBgDark,
-            focusedLabelColor = LightGreen,
-            unfocusedLabelColor = TextSecondary
+            focusedBorderColor = GradilyTheme.colors.lightGreen,
+            unfocusedBorderColor = GradilyTheme.colors.glassBorder,
+            focusedTextColor = GradilyTheme.colors.textPrimary,
+            unfocusedTextColor = GradilyTheme.colors.textPrimary,
+            cursorColor = GradilyTheme.colors.lightGreen,
+            focusedContainerColor = GradilyTheme.colors.glassBgDark,
+            unfocusedContainerColor = GradilyTheme.colors.glassBgDark,
+            focusedLabelColor = GradilyTheme.colors.lightGreen,
+            unfocusedLabelColor = GradilyTheme.colors.textSecondary
         ),
         shape = RoundedCornerShape(16.dp),
         modifier = modifier
@@ -262,25 +276,40 @@ fun GradilyButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true
 ) {
+    val haptic = LocalHapticFeedback.current
     Button(
-        onClick = onClick,
+        onClick = {
+            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+            onClick()
+        },
         enabled = enabled,
         modifier = modifier
             .fillMaxWidth()
             .height(54.dp),
         shape = RoundedCornerShape(16.dp),
         colors = ButtonDefaults.buttonColors(
-            containerColor = LightGreen,
-            disabledContainerColor = SurfaceGreen
+            containerColor = Color.Transparent,
+            disabledContainerColor = Color.Transparent
         ),
-        elevation = ButtonDefaults.buttonElevation(defaultElevation = 8.dp)
+        contentPadding = PaddingValues()
     ) {
-        Text(
-            text,
-            color = Color.White,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.SemiBold
-        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .then(
+                    if (enabled) Modifier.background(
+                        Brush.horizontalGradient(listOf(GradilyTheme.colors.mediumGreen, GradilyTheme.colors.lightGreen))
+                    ) else Modifier.background(GradilyTheme.colors.surfaceGreen.copy(alpha = 0.5f))
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = text,
+                color = if (enabled) GradilyTheme.colors.textPrimary else GradilyTheme.colors.textMuted,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
     }
 }
 
@@ -293,19 +322,26 @@ fun GradilyOutlineButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val haptic = LocalHapticFeedback.current
+    val colors = GradilyTheme.colors
     OutlinedButton(
-        onClick = onClick,
+        onClick = {
+            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+            onClick()
+        },
         modifier = modifier
             .fillMaxWidth()
             .height(54.dp),
-        shape = RoundedCornerShape(16.dp),
-        border = ButtonDefaults.outlinedButtonBorder(enabled = true).copy(
-            brush = Brush.linearGradient(listOf(LightGreen, AccentGreen))
+        colors = ButtonDefaults.outlinedButtonColors(
+            contentColor = GradilyTheme.colors.lightGreen
+        ),
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp,
+            Brush.horizontalGradient(listOf(GradilyTheme.colors.mediumGreen, GradilyTheme.colors.lightGreen))
         )
     ) {
         Text(
-            text,
-            color = LightGreen,
+            text = text,
             fontSize = 16.sp,
             fontWeight = FontWeight.SemiBold
         )
@@ -326,9 +362,9 @@ fun ProfileAvatar(
             .size(size)
             .clip(CircleShape)
             .background(
-                Brush.linearGradient(listOf(LightGreen, AccentGreen))
+                Brush.linearGradient(listOf(GradilyTheme.colors.lightGreen, GradilyTheme.colors.accentGreen))
             )
-            .border(2.dp, GlassBorder, CircleShape),
+            .border(2.dp, GradilyTheme.colors.glassBorder, CircleShape),
         contentAlignment = Alignment.Center
     ) {
         if (profilePicUri != null) {
@@ -348,7 +384,7 @@ fun ProfileAvatar(
 fun SectionHeader(title: String, modifier: Modifier = Modifier) {
     Text(
         text = title,
-        color = TextPrimary,
+        color = GradilyTheme.colors.textPrimary,
         fontSize = 28.sp,
         fontWeight = FontWeight.Bold,
         modifier = modifier.padding(bottom = 8.dp)
@@ -362,8 +398,156 @@ fun SectionHeader(title: String, modifier: Modifier = Modifier) {
 fun SectionSubtitle(text: String, modifier: Modifier = Modifier) {
     Text(
         text = text,
-        color = TextSecondary,
+        color = GradilyTheme.colors.textSecondary,
         fontSize = 14.sp,
         modifier = modifier.padding(bottom = 16.dp)
     )
+}
+
+/**
+ * Grade Analytics Bar Chart — Canvas-based horizontal bar chart
+ * showing individual assessment scores with animated fills.
+ */
+@Composable
+fun GradeBarChart(
+    labels: List<String>,
+    values: List<Float>,
+    maxValues: List<Float>,
+    modifier: Modifier = Modifier
+) {
+    val animProgress = remember { Animatable(0f) }
+    LaunchedEffect(values) {
+        animProgress.snapTo(0f)
+        animProgress.animateTo(1f, animationSpec = tween(800, easing = LinearOutSlowInEasing))
+    }
+
+    val barColors = listOf(
+        GradilyTheme.colors.accentBlue,
+        GradilyTheme.colors.accentGreen,
+        GradilyTheme.colors.accentPurple,
+        GradilyTheme.colors.accentAmber,
+        GradilyTheme.colors.lightGreen,
+        GradilyTheme.colors.accentRed
+    )
+
+    Column(modifier = modifier.fillMaxWidth()) {
+        labels.forEachIndexed { i, label ->
+            val maxVal = if (i < maxValues.size) maxValues[i] else 100f
+            val value = if (i < values.size) values[i] else 0f
+            val ratio = if (maxVal > 0) (value / maxVal).coerceIn(0f, 1f) else 0f
+            val color = barColors[i % barColors.size]
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    label,
+                    color = GradilyTheme.colors.textSecondary,
+                    fontSize = 12.sp,
+                    modifier = Modifier.width(80.dp)
+                )
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(20.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(GradilyTheme.colors.glassBg)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .fillMaxWidth(ratio * animProgress.value)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(
+                                Brush.horizontalGradient(
+                                    listOf(color.copy(alpha = 0.7f), color)
+                                )
+                            )
+                    )
+                }
+                Text(
+                    "${value.toInt()}/${maxVal.toInt()}",
+                    color = GradilyTheme.colors.textMuted,
+                    fontSize = 11.sp,
+                    modifier = Modifier.width(50.dp),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.End
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Leaderboard entry row.
+ */
+@Composable
+fun LeaderboardEntry(
+    rank: Int,
+    name: String,
+    gpa: Double,
+    isCurrentUser: Boolean = false,
+    modifier: Modifier = Modifier
+) {
+    val medalEmoji = when (rank) {
+        1 -> "🥇"
+        2 -> "🥈"
+        3 -> "🥉"
+        else -> "#$rank"
+    }
+
+    val bgColor = if (isCurrentUser) GradilyTheme.colors.accentBlue.copy(alpha = 0.12f)
+                  else Color.Transparent
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(bgColor)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                medalEmoji,
+                fontSize = if (rank <= 3) 20.sp else 14.sp,
+                modifier = Modifier.width(36.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Column {
+                Text(
+                    name,
+                    color = if (isCurrentUser) GradilyTheme.colors.accentBlue else GradilyTheme.colors.textPrimary,
+                    fontWeight = if (isCurrentUser) FontWeight.Bold else FontWeight.Medium,
+                    fontSize = 14.sp
+                )
+            }
+        }
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(8.dp))
+                .background(
+                    when {
+                        gpa >= 3.5 -> GradilyTheme.colors.accentGreen.copy(alpha = 0.15f)
+                        gpa >= 2.5 -> GradilyTheme.colors.accentAmber.copy(alpha = 0.15f)
+                        else -> GradilyTheme.colors.accentRed.copy(alpha = 0.15f)
+                    }
+                )
+                .padding(horizontal = 10.dp, vertical = 4.dp)
+        ) {
+            Text(
+                String.format("%.2f", gpa),
+                color = when {
+                    gpa >= 3.5 -> GradilyTheme.colors.accentGreen
+                    gpa >= 2.5 -> GradilyTheme.colors.accentAmber
+                    else -> GradilyTheme.colors.accentRed
+                },
+                fontWeight = FontWeight.Bold,
+                fontSize = 13.sp
+            )
+        }
+    }
 }

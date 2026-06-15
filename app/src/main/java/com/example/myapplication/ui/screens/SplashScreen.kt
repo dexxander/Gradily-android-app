@@ -21,20 +21,21 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.myapplication.GradilyViewModel
 import com.example.myapplication.ui.components.GradilyBackground
-import com.example.myapplication.ui.theme.TextPrimary
-import com.example.myapplication.ui.theme.TextSecondary
+import com.example.myapplication.ui.theme.GradilyTheme
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.delay
 
 @Composable
 fun SplashScreen(
     viewModel: GradilyViewModel,
+    onNavigateToOnboarding: () -> Unit,
     onNavigateToAuth: () -> Unit,
     onNavigateToLecturer: () -> Unit,
     onNavigateToStudent: () -> Unit
 ) {
     val scale = remember { Animatable(0.5f) }
     val user by viewModel.currentUser.collectAsState()
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     LaunchedEffect(key1 = true) {
         scale.animateTo(
@@ -43,11 +44,17 @@ fun SplashScreen(
         )
         delay(500) // Brief pause to show the logo
 
-        val firebaseUser = FirebaseAuth.getInstance().currentUser
-        if (firebaseUser == null) {
-            onNavigateToAuth()
+        val sharedPref = context.getSharedPreferences("gradily_prefs", android.content.Context.MODE_PRIVATE)
+        val isFirstLaunch = sharedPref.getBoolean("is_first_launch", true)
+
+        if (isFirstLaunch) {
+            onNavigateToOnboarding()
         } else {
-            // Wait for user document to load if it hasn't already
+            val firebaseUser = FirebaseAuth.getInstance().currentUser
+            if (firebaseUser == null) {
+                onNavigateToAuth()
+            } else {
+                // Wait for user document to load if it hasn't already
             var waitCount = 0
             while (viewModel.currentUser.value == null && waitCount < 10) {
                 delay(200)
@@ -66,6 +73,7 @@ fun SplashScreen(
                 FirebaseAuth.getInstance().signOut()
                 onNavigateToAuth()
             }
+            }
         }
     }
 
@@ -82,13 +90,13 @@ fun SplashScreen(
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
                     "Gradily",
-                    color = TextPrimary,
+                    color = GradilyTheme.colors.textPrimary,
                     fontSize = 32.sp,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
                     "Grade Management",
-                    color = TextSecondary,
+                    color = GradilyTheme.colors.textSecondary,
                     fontSize = 14.sp
                 )
             }

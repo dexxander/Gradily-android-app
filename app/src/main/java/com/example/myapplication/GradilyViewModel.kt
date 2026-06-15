@@ -20,8 +20,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import java.util.UUID
 
 class GradilyViewModel(application: Application) : AndroidViewModel(application) {
     private val auth = FirebaseAuth.getInstance()
@@ -206,14 +208,56 @@ class GradilyViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    fun updateProfilePicture(uri: String) {
+    fun updateProfilePicture(uriString: String) {
         val user = _currentUser.value ?: return
         val uid = user.id
         if (uid.isEmpty()) return
         
-        firestore.collection("users").document(uid).update("profilePicUri", uri)
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val context = getApplication<Application>()
+                val uri = android.net.Uri.parse(uriString)
+                val inputStream = context.contentResolver.openInputStream(uri)
+                val bitmap = android.graphics.BitmapFactory.decodeStream(inputStream)
+                inputStream?.close()
+
+                if (bitmap != null) {
+                    // Compress to a reasonable size for Base64 (max 500x500)
+                    val maxDim = 500f
+                    val scale = Math.min(maxDim / bitmap.width, maxDim / bitmap.height)
+                    val scaledBitmap = if (scale < 1f) {
+                        android.graphics.Bitmap.createScaledBitmap(
+                            bitmap, 
+                            (bitmap.width * scale).toInt(), 
+                            (bitmap.height * scale).toInt(), 
+                            true
+                        )
+                    } else bitmap
+
+                    val outputStream = java.io.ByteArrayOutputStream()
+                    scaledBitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 70, outputStream)
+                    val byteArray = outputStream.toByteArray()
+                    val base64String = "data:image/jpeg;base64," + android.util.Base64.encodeToString(byteArray, android.util.Base64.DEFAULT)
+
+                    firestore.collection("users").document(uid).update("profilePicUri", base64String)
+                        .addOnSuccessListener {
+                            _currentUser.value = user.copy(profilePicUri = base64String)
+                        }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    fun updateName(newName: String) {
+        val user = _currentUser.value ?: return
+        val uid = user.id
+        if (uid.isEmpty()) return
+        
+        firestore.collection("users").document(uid).update("name", newName)
             .addOnSuccessListener {
-                _currentUser.value = user.copy(profilePicUri = uri)
+                _currentUser.value = user.copy(name = newName)
             }
     }
 
@@ -274,6 +318,39 @@ class GradilyViewModel(application: Application) : AndroidViewModel(application)
                 }
             }
         awaitClose { subscription.remove() }
+    }
+
+    fun markAttendance(student: Student, attended: Boolean) {
+        val newTotal = student.totalClasses + 1
+        val newAttended = student.classesAttended + (if (attended) 1 else 0)
+        firestore.collection("students").document(student.studentId).update(
+            mapOf(
+                "totalClasses" to newTotal,
+                "classesAttended" to newAttended
+            )
+        )
+    }
+
+    fun getAnnouncements(subjectId: String? = null): Flow<List<com.example.myapplication.data.Announcement>> = callbackFlow {
+        val collection = firestore.collection("announcements")
+        val query = if (subjectId != null) collection.whereEqualTo("subjectId", subjectId) else collection
+        val subscription = query.addSnapshotListener { snapshot, _ ->
+            if (snapshot != null) {
+                trySend(snapshot.toObjects(com.example.myapplication.data.Announcement::class.java).sortedByDescending { it.timestamp })
+            }
+        }
+        awaitClose { subscription.remove() }
+    }
+
+    fun postAnnouncement(subjectId: String, title: String, content: String) {
+        val announcement = com.example.myapplication.data.Announcement(
+            id = UUID.randomUUID().toString(),
+            subjectId = subjectId,
+            title = title,
+            content = content,
+            timestamp = System.currentTimeMillis()
+        )
+        firestore.collection("announcements").document(announcement.id).set(announcement)
     }
 
     fun createStudent(studentName: String, email: String) {
@@ -361,6 +438,22 @@ class GradilyViewModel(application: Application) : AndroidViewModel(application)
         awaitClose { subscription.remove() }
     }
 
+    fun getStudentsBySubject(subjectId: String): Flow<List<Student>> = callbackFlow {
+        if (subjectId.isEmpty()) {
+            trySend(emptyList())
+            close()
+            return@callbackFlow
+        }
+        val subscription = firestore.collection("students")
+            .whereEqualTo("subjectId", subjectId)
+            .addSnapshotListener { snapshot, _ ->
+                if (snapshot != null) {
+                    trySend(snapshot.toObjects(Student::class.java))
+                }
+            }
+        awaitClose { subscription.remove() }
+    }
+
     suspend fun getSubjectById(subjectId: String): Subject? {
         if (subjectId.isEmpty()) return null
         return try {
@@ -369,5 +462,22 @@ class GradilyViewModel(application: Application) : AndroidViewModel(application)
         } catch (e: Exception) {
             null
         }
+    }
+
+    suspend fun getAssessmentsForStudents(studentIds: List<String>): Map<String, Assessment?> {
+        val result = mutableMapOf<String, Assessment?>()
+        if (studentIds.isEmpty()) return result
+        
+        try {
+            // Firestore 'in' query supports up to 10 items. For larger classes we could chunk it,
+            // but for simplicity here we will just fetch them individually in parallel or loop.
+            for (id in studentIds) {
+                val snapshot = firestore.collection("assessments").document(id).get().await()
+                result[id] = snapshot.toObject(Assessment::class.java)
+            }
+        } catch (e: Exception) {
+            Log.e("GradilyViewModel", "Error fetching assessments", e)
+        }
+        return result
     }
 }

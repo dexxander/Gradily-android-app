@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -25,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -53,22 +55,9 @@ fun ClassListScreen(
     val user by viewModel.currentUser.collectAsState()
     val context = LocalContext.current
 
-    // Image picker for profile picture
-    val imagePickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        uri?.let {
-            try {
-                context.contentResolver.takePersistableUriPermission(
-                    it, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
-                )
-            } catch (_: SecurityException) { }
-            viewModel.updateProfilePicture(it.toString())
-        }
-    }
-
     val scope = rememberCoroutineScope()
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    var searchQuery by remember { mutableStateOf("") }
 
     GradilyDrawer(
         drawerState = drawerState,
@@ -96,34 +85,45 @@ fun ClassListScreen(
                             onClick = { scope.launch { drawerState.open() } },
                             modifier = Modifier
                                 .clip(CircleShape)
-                                .background(GlassBg)
+                                .background(GradilyTheme.colors.glassBg)
                         ) {
-                            Icon(Icons.Default.Menu, "Menu", tint = TextPrimary)
+                            Icon(Icons.Default.Menu, "Menu", tint = GradilyTheme.colors.textPrimary)
                         }
                         Spacer(modifier = Modifier.width(12.dp))
-                        // Profile picture - clickable
+                        // Profile picture
                         Box(
                             modifier = Modifier
                                 .size(52.dp)
                                 .clip(CircleShape)
                                 .background(
-                                    Brush.linearGradient(listOf(LightGreen, AccentGreen)),
+                                    Brush.linearGradient(listOf(GradilyTheme.colors.lightGreen, GradilyTheme.colors.accentGreen)),
                                     CircleShape
                                 )
-                                .border(2.dp, GlassBorder, CircleShape)
-                                .clickable { imagePickerLauncher.launch("image/*") },
+                                .border(2.dp, GradilyTheme.colors.glassBorder, CircleShape),
                             contentAlignment = Alignment.Center
                         ) {
-                            if (user?.profilePicUri != null) {
-                                AsyncImage(
-                                    model = ImageRequest.Builder(context)
-                                        .data(user!!.profilePicUri)
-                                        .crossfade(true)
-                                        .build(),
-                                    contentDescription = "Profile",
-                                    modifier = Modifier.fillMaxSize().clip(CircleShape),
-                                    contentScale = ContentScale.Crop
-                                )
+                            val picUri = user?.profilePicUri
+                            if (picUri != null) {
+                                if (picUri.startsWith("data:image")) {
+                                    val base64 = picUri.substringAfter(",")
+                                    val bytes = android.util.Base64.decode(base64, android.util.Base64.DEFAULT)
+                                    val bitmap = android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                                    if (bitmap != null) {
+                                        androidx.compose.foundation.Image(
+                                            bitmap = bitmap.asImageBitmap(),
+                                            contentDescription = "Profile",
+                                            modifier = Modifier.fillMaxSize().clip(CircleShape),
+                                            contentScale = ContentScale.Crop
+                                        )
+                                    }
+                                } else {
+                                    AsyncImage(
+                                        model = ImageRequest.Builder(context).data(picUri).build(),
+                                        contentDescription = "Profile",
+                                        modifier = Modifier.fillMaxSize().clip(CircleShape),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                }
                             } else {
                                 Text("👤", fontSize = 22.sp)
                             }
@@ -132,12 +132,13 @@ fun ClassListScreen(
                         Column {
                             Text(
                                 "Welcome back,",
-                                color = TextMuted,
+                                color = GradilyTheme.colors.textMuted,
                                 fontSize = 12.sp
                             )
+                            val displayName = if (!user?.name.isNullOrBlank()) user!!.name else (user?.email?.substringBefore("@") ?: "Lecturer")
                             Text(
-                                user?.email?.substringBefore("@") ?: "Lecturer",
-                                color = TextPrimary,
+                                displayName,
+                                color = GradilyTheme.colors.textPrimary,
                                 fontWeight = FontWeight.SemiBold,
                                 fontSize = 16.sp
                             )
@@ -147,15 +148,37 @@ fun ClassListScreen(
                         onClick = onLogout,
                         modifier = Modifier
                             .clip(CircleShape)
-                            .background(GlassBg)
+                            .background(GradilyTheme.colors.glassBg)
                     ) {
-                        Icon(Icons.Default.ExitToApp, "Logout", tint = AccentRed)
+                        Icon(Icons.Default.ExitToApp, "Logout", tint = GradilyTheme.colors.accentRed)
                     }
                 }
 
                 // Title
                 SectionHeader("Your Classes")
                 SectionSubtitle("${subjects.size} ${if (subjects.size == 1) "class" else "classes"} registered")
+
+                // Search bar
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    placeholder = { Text("Search classes...", color = GradilyTheme.colors.textMuted) },
+                    leadingIcon = { Icon(Icons.Default.Search, "Search", tint = GradilyTheme.colors.textMuted) },
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                    singleLine = true,
+                    shape = RoundedCornerShape(16.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = GradilyTheme.colors.accentBlue,
+                        unfocusedBorderColor = GradilyTheme.colors.glassBorder,
+                        focusedTextColor = GradilyTheme.colors.textPrimary,
+                        unfocusedTextColor = GradilyTheme.colors.textPrimary
+                    )
+                )
+
+                val filteredSubjects = remember(subjects, searchQuery) {
+                    if (searchQuery.isBlank()) subjects
+                    else subjects.filter { it.courseName.contains(searchQuery, ignoreCase = true) || it.subjectId.contains(searchQuery, ignoreCase = true) }
+                }
 
                 // Create class FAB button
                 GlassCard(
@@ -173,21 +196,21 @@ fun ClassListScreen(
                             modifier = Modifier
                                 .size(40.dp)
                                 .clip(CircleShape)
-                                .background(LightGreen),
+                                .background(GradilyTheme.colors.lightGreen),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(Icons.Default.Add, "Add", tint = Color.White)
                         }
                         Spacer(modifier = Modifier.width(12.dp))
                         Column {
-                            Text("Create New Class", color = TextPrimary, fontWeight = FontWeight.SemiBold)
-                            Text("Add a course to manage", color = TextMuted, fontSize = 12.sp)
+                            Text("Create New Class", color = GradilyTheme.colors.textPrimary, fontWeight = FontWeight.SemiBold)
+                            Text("Add a course to manage", color = GradilyTheme.colors.textMuted, fontSize = 12.sp)
                         }
                     }
                 }
 
                 // Class list
-                if (subjects.isEmpty()) {
+                if (filteredSubjects.isEmpty()) {
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
@@ -195,15 +218,15 @@ fun ClassListScreen(
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text("📚", fontSize = 48.sp)
                             Spacer(modifier = Modifier.height(16.dp))
-                            Text("No classes yet", color = TextSecondary, fontSize = 18.sp, fontWeight = FontWeight.Medium)
-                            Text("Tap + to create your first class", color = TextMuted, fontSize = 14.sp)
+                            Text("No classes yet", color = GradilyTheme.colors.textSecondary, fontSize = 18.sp, fontWeight = FontWeight.Medium)
+                            Text("Tap + to create your first class", color = GradilyTheme.colors.textMuted, fontSize = 14.sp)
                         }
                     }
                 } else {
                     LazyColumn(
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        items(subjects, key = { it.subjectId }) { subject ->
+                        items(filteredSubjects, key = { it.subjectId }) { subject ->
                             GlassCard(
                                 modifier = Modifier.fillMaxWidth().animateItem()
                             ) {
@@ -215,13 +238,13 @@ fun ClassListScreen(
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(
                                             subject.courseName,
-                                            color = TextPrimary,
+                                            color = GradilyTheme.colors.textPrimary,
                                             fontWeight = FontWeight.Bold,
                                             fontSize = 18.sp
                                         )
                                         Text(
                                             "${subject.creditHours} Credit Hours",
-                                            color = TextMuted,
+                                            color = GradilyTheme.colors.textMuted,
                                             fontSize = 13.sp
                                         )
                                     }
@@ -231,7 +254,7 @@ fun ClassListScreen(
                                                 viewModel.setCurrentSubject(subject)
                                                 onManageClass(subject)
                                             },
-                                            colors = ButtonDefaults.buttonColors(containerColor = AccentAmber),
+                                            colors = ButtonDefaults.buttonColors(containerColor = GradilyTheme.colors.accentAmber),
                                             shape = RoundedCornerShape(12.dp),
                                             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
                                         ) {
@@ -242,9 +265,9 @@ fun ClassListScreen(
                                             modifier = Modifier
                                                 .size(40.dp)
                                                 .clip(RoundedCornerShape(12.dp))
-                                                .background(AccentRed.copy(alpha = 0.15f))
+                                                .background(GradilyTheme.colors.accentRed.copy(alpha = 0.15f))
                                         ) {
-                                            Icon(Icons.Default.Delete, "Delete", tint = AccentRed, modifier = Modifier.size(20.dp))
+                                            Icon(Icons.Default.Delete, "Delete", tint = GradilyTheme.colors.accentRed, modifier = Modifier.size(20.dp))
                                         }
                                     }
                                 }
@@ -283,14 +306,14 @@ fun ClassCreationScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             GlassCard(modifier = Modifier.fillMaxWidth()) {
-                Text("Course Name", color = TextSecondary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                Text("Course Name", color = GradilyTheme.colors.textSecondary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
                 GradilyTextField(
                     value = className,
                     onValueChange = { className = it },
                     label = "e.g. Mathematics 101"
                 )
                 Spacer(modifier = Modifier.height(16.dp))
-                Text("Credit Hours", color = TextSecondary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                Text("Credit Hours", color = GradilyTheme.colors.textSecondary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
                 GradilyTextField(
                     value = creditHours,
                     onValueChange = { creditHours = it },
@@ -312,7 +335,7 @@ fun ClassCreationScreen(
             Spacer(modifier = Modifier.weight(0.3f))
 
             TextButton(onClick = onNavigateBack) {
-                Text("← Return", color = TextMuted, fontSize = 14.sp)
+                Text("← Return", color = GradilyTheme.colors.textMuted, fontSize = 14.sp)
             }
         }
     }

@@ -19,7 +19,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.myapplication.data.Student
 import com.example.myapplication.ui.screens.*
-import com.example.myapplication.ui.theme.DarkBackground
+import com.example.myapplication.ui.theme.MyApplicationTheme
 
 class MainActivity : ComponentActivity() {
     private val viewModel: GradilyViewModel by viewModels()
@@ -28,8 +28,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            MaterialTheme {
-                Surface(modifier = Modifier.fillMaxSize(), color = DarkBackground) {
+            MyApplicationTheme {
+                Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     GradilyApp(viewModel)
                 }
             }
@@ -91,6 +91,9 @@ fun GradilyApp(viewModel: GradilyViewModel) {
         ) {
             SplashScreen(
                 viewModel = viewModel,
+                onNavigateToOnboarding = {
+                    navController.navigate("onboarding") { popUpTo("splash") { inclusive = true } }
+                },
                 onNavigateToAuth = {
                     navController.navigate("main_auth") { popUpTo("splash") { inclusive = true } }
                 },
@@ -99,6 +102,24 @@ fun GradilyApp(viewModel: GradilyViewModel) {
                 },
                 onNavigateToStudent = {
                     navController.navigate("student_dashboard") { popUpTo("splash") { inclusive = true } }
+                }
+            )
+        }
+
+        composable(
+            "onboarding",
+            enterTransition = { slideInFromRight() },
+            exitTransition = { fadeOutSmooth() }
+        ) {
+            val context = androidx.compose.ui.platform.LocalContext.current
+            OnboardingScreen(
+                onFinishOnboarding = {
+                    val sharedPref = context.getSharedPreferences("gradily_prefs", android.content.Context.MODE_PRIVATE)
+                    with(sharedPref.edit()) {
+                        putBoolean("is_first_launch", false)
+                        apply()
+                    }
+                    navController.navigate("main_auth") { popUpTo("onboarding") { inclusive = true } }
                 }
             )
         }

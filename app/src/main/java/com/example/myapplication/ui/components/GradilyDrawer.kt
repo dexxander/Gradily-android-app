@@ -47,8 +47,8 @@ fun GradilyDrawer(
         drawerState = drawerState,
         drawerContent = {
             ModalDrawerSheet(
-                drawerContainerColor = DarkGreen,
-                drawerContentColor = TextPrimary,
+                drawerContainerColor = GradilyTheme.colors.darkGreen,
+                drawerContentColor = GradilyTheme.colors.textPrimary,
                 modifier = Modifier.width(300.dp)
             ) {
                 Column(
@@ -59,7 +59,7 @@ fun GradilyDrawer(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(200.dp)
-                            .background(Brush.verticalGradient(listOf(DarkBackground, DarkGreen)))
+                            .background(Brush.verticalGradient(listOf(GradilyTheme.colors.darkBackground, GradilyTheme.colors.darkGreen)))
                             .padding(24.dp),
                         contentAlignment = Alignment.BottomStart
                     ) {
@@ -68,7 +68,7 @@ fun GradilyDrawer(
                                 modifier = Modifier
                                     .size(72.dp)
                                     .clip(CircleShape)
-                                    .background(SurfaceGreen),
+                                    .background(GradilyTheme.colors.surfaceGreen),
                                 contentAlignment = Alignment.Center
                             ) {
                                 if (user?.profilePicUri != null) {
@@ -88,13 +88,13 @@ fun GradilyDrawer(
                             Spacer(modifier = Modifier.height(12.dp))
                             Text(
                                 user?.email ?: "Guest",
-                                color = TextPrimary,
+                                color = GradilyTheme.colors.textPrimary,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 18.sp
                             )
                             Text(
                                 user?.role?.lowercase()?.replaceFirstChar { it.uppercase() } ?: "User",
-                                color = LightGreen,
+                                color = GradilyTheme.colors.lightGreen,
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Medium
                             )
@@ -132,7 +132,7 @@ fun GradilyDrawer(
 
                     Spacer(modifier = Modifier.weight(1f))
 
-                    HorizontalDivider(color = GlassBorder, modifier = Modifier.padding(horizontal = 24.dp))
+                    HorizontalDivider(color = GradilyTheme.colors.glassBorder, modifier = Modifier.padding(horizontal = 24.dp))
                     
                     DrawerItem(
                         icon = Icons.Default.ExitToApp,
@@ -141,7 +141,7 @@ fun GradilyDrawer(
                             scope.launch { drawerState.close() }
                             onLogout()
                         },
-                        tint = AccentRed
+                        tint = GradilyTheme.colors.accentRed
                     )
                     Spacer(modifier = Modifier.height(24.dp))
                 }
@@ -156,7 +156,7 @@ private fun DrawerItem(
     icon: ImageVector,
     label: String,
     onClick: () -> Unit,
-    tint: Color = TextPrimary
+    tint: Color = GradilyTheme.colors.textPrimary
 ) {
     Row(
         modifier = Modifier

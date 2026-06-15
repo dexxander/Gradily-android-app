@@ -14,6 +14,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -27,6 +28,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.myapplication.GradilyViewModel
+import kotlinx.coroutines.launch
 import com.example.myapplication.data.Assessment
 import com.example.myapplication.data.Student
 import com.example.myapplication.ui.components.*
@@ -59,17 +61,53 @@ fun ClassStudentContentScreen(
                     onClick = onHome,
                     modifier = Modifier
                         .clip(CircleShape)
-                        .background(GlassBg)
+                        .background(GradilyTheme.colors.glassBg)
                 ) {
-                    Icon(Icons.Default.Home, "Home", tint = TextPrimary)
+                    Icon(Icons.Default.Home, "Home", tint = GradilyTheme.colors.textPrimary)
                 }
                 Text(
                     subject?.courseName ?: "Class",
-                    color = TextPrimary,
+                    color = GradilyTheme.colors.textPrimary,
                     fontWeight = FontWeight.Bold,
                     fontSize = 20.sp
                 )
-                Box(modifier = Modifier.size(48.dp)) // Spacer for alignment
+                val context = androidx.compose.ui.platform.LocalContext.current
+                val scope = rememberCoroutineScope()
+                var isExporting by remember { mutableStateOf(false) }
+
+                if (isExporting) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = GradilyTheme.colors.accentBlue,
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    IconButton(
+                        onClick = {
+                            if (subject != null && students.isNotEmpty()) {
+                                isExporting = true
+                                scope.launch {
+                                    val assessments = viewModel.getAssessmentsForStudents(students.map { it.studentId })
+                                    com.example.myapplication.PdfExportHelper.exportGradesToPdf(
+                                        context = context,
+                                        subject = subject!!,
+                                        students = students,
+                                        assessments = assessments,
+                                        calculateGPA = { viewModel.calculateGPA(it) }
+                                    )
+                                    isExporting = false
+                                }
+                            } else if (students.isEmpty()) {
+                                android.widget.Toast.makeText(context, "No students to export", android.widget.Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .background(GradilyTheme.colors.glassBg)
+                    ) {
+                        Text("📄", fontSize = 16.sp) // Fallback emoji for PDF since no specific icon is imported
+                    }
+                }
             }
 
             // Stats
@@ -80,14 +118,92 @@ fun ClassStudentContentScreen(
                 GlassCard(modifier = Modifier.weight(1f)) {
                     Text("📊", fontSize = 24.sp)
                     Spacer(modifier = Modifier.height(4.dp))
-                    Text("${students.size}", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 24.sp)
-                    Text("Students", color = TextMuted, fontSize = 12.sp)
+                    Text("${students.size}", color = GradilyTheme.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 24.sp)
+                    Text("Students", color = GradilyTheme.colors.textMuted, fontSize = 12.sp)
                 }
                 GlassCard(modifier = Modifier.weight(1f)) {
                     Text("📖", fontSize = 24.sp)
                     Spacer(modifier = Modifier.height(4.dp))
-                    Text("${subject?.creditHours ?: 0}", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 24.sp)
-                    Text("Credit Hours", color = TextMuted, fontSize = 12.sp)
+                    Text("${subject?.creditHours ?: 0}", color = GradilyTheme.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 24.sp)
+                    Text("Credit Hours", color = GradilyTheme.colors.textMuted, fontSize = 12.sp)
+                }
+            }
+
+            // Post Announcement
+            var showAnnouncementForm by remember { mutableStateOf(false) }
+            var announcementTitle by remember { mutableStateOf("") }
+            var announcementContent by remember { mutableStateOf("") }
+            
+            GlassCard(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp)
+                    .clip(RoundedCornerShape(20.dp))
+            ) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { showAnnouncementForm = !showAnnouncementForm }
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(GradilyTheme.colors.accentBlue),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("📢", fontSize = 16.sp)
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text("Post Announcement", color = GradilyTheme.colors.textPrimary, fontWeight = FontWeight.SemiBold)
+                            Text("Notify all enrolled students", color = GradilyTheme.colors.textMuted, fontSize = 12.sp)
+                        }
+                    }
+                    
+                    if (showAnnouncementForm) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        OutlinedTextField(
+                            value = announcementTitle,
+                            onValueChange = { announcementTitle = it },
+                            label = { Text("Title", color = GradilyTheme.colors.textMuted) },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = GradilyTheme.colors.accentBlue,
+                                focusedTextColor = GradilyTheme.colors.textPrimary,
+                                unfocusedTextColor = GradilyTheme.colors.textPrimary
+                            )
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = announcementContent,
+                            onValueChange = { announcementContent = it },
+                            label = { Text("Message", color = GradilyTheme.colors.textMuted) },
+                            modifier = Modifier.fillMaxWidth().height(100.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = GradilyTheme.colors.accentBlue,
+                                focusedTextColor = GradilyTheme.colors.textPrimary,
+                                unfocusedTextColor = GradilyTheme.colors.textPrimary
+                            )
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        GradilyButton(
+                            text = "Post",
+                            onClick = {
+                                if (subject != null && announcementTitle.isNotBlank() && announcementContent.isNotBlank()) {
+                                    viewModel.postAnnouncement(subject.subjectId, announcementTitle, announcementContent)
+                                    announcementTitle = ""
+                                    announcementContent = ""
+                                    showAnnouncementForm = false
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
                 }
             }
 
@@ -107,29 +223,52 @@ fun ClassStudentContentScreen(
                         modifier = Modifier
                             .size(36.dp)
                             .clip(CircleShape)
-                            .background(LightGreen),
+                            .background(GradilyTheme.colors.lightGreen),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(Icons.Default.Add, "Add", tint = Color.White, modifier = Modifier.size(20.dp))
                     }
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
-                        Text("Add Student", color = TextPrimary, fontWeight = FontWeight.SemiBold)
-                        Text("Enroll a new student", color = TextMuted, fontSize = 12.sp)
+                        Text("Add Student", color = GradilyTheme.colors.textPrimary, fontWeight = FontWeight.SemiBold)
+                        Text("Enroll a new student", color = GradilyTheme.colors.textMuted, fontSize = 12.sp)
                     }
                 }
+            }
+
+            // Search bar
+            var searchQuery by remember { mutableStateOf("") }
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                placeholder = { Text("Search students...", color = GradilyTheme.colors.textMuted) },
+                leadingIcon = { Icon(Icons.Default.Search, "Search", tint = GradilyTheme.colors.textMuted) },
+                modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                singleLine = true,
+                shape = RoundedCornerShape(16.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = GradilyTheme.colors.accentBlue,
+                    unfocusedBorderColor = GradilyTheme.colors.glassBorder,
+                    focusedTextColor = GradilyTheme.colors.textPrimary,
+                    unfocusedTextColor = GradilyTheme.colors.textPrimary
+                )
+            )
+
+            val filteredStudents = remember(students, searchQuery) {
+                if (searchQuery.isBlank()) students
+                else students.filter { it.studentName.contains(searchQuery, ignoreCase = true) || it.email.contains(searchQuery, ignoreCase = true) }
             }
 
             // Student list header
             Text(
                 "Enrolled Students",
-                color = TextSecondary,
+                color = GradilyTheme.colors.textSecondary,
                 fontWeight = FontWeight.Medium,
                 fontSize = 14.sp,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
 
-            if (students.isEmpty()) {
+            if (filteredStudents.isEmpty()) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
@@ -137,13 +276,13 @@ fun ClassStudentContentScreen(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("👥", fontSize = 48.sp)
                         Spacer(modifier = Modifier.height(16.dp))
-                        Text("No students enrolled", color = TextSecondary, fontSize = 16.sp, fontWeight = FontWeight.Medium)
-                        Text("Tap + to add the first student", color = TextMuted, fontSize = 14.sp)
+                        Text("No students found", color = GradilyTheme.colors.textSecondary, fontSize = 16.sp, fontWeight = FontWeight.Medium)
+                        Text(if (students.isEmpty()) "Tap + to add the first student" else "Try a different search", color = GradilyTheme.colors.textMuted, fontSize = 14.sp)
                     }
                 }
             } else {
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(students, key = { it.studentId }) { student ->
+                    items(filteredStudents, key = { it.studentId }) { student ->
                         StudentListItem(student, viewModel, onAssessStudent)
                     }
                 }
@@ -176,20 +315,32 @@ fun StudentListItem(
                     modifier = Modifier
                         .size(40.dp)
                         .clip(CircleShape)
-                        .background(SurfaceGreen),
+                        .background(GradilyTheme.colors.surfaceGreen),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         student.studentName.first().uppercase(),
-                        color = AccentGreen,
+                        color = GradilyTheme.colors.accentGreen,
                         fontWeight = FontWeight.Bold,
                         fontSize = 16.sp
                     )
                 }
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
-                    Text(student.studentName, color = TextPrimary, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
-                    Text(student.email.ifBlank { "No email" }, color = TextMuted, fontSize = 11.sp)
+                    Text(student.studentName, color = GradilyTheme.colors.textPrimary, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                    Text(student.email.ifBlank { "No email" }, color = GradilyTheme.colors.textMuted, fontSize = 11.sp)
+                    
+                    if (student.totalClasses > 0) {
+                        val attendancePercent = (student.classesAttended.toFloat() / student.totalClasses.toFloat() * 100).toInt()
+                        Text(
+                            "Attendance: $attendancePercent% (${student.classesAttended}/${student.totalClasses})",
+                            color = if (attendancePercent >= 80) GradilyTheme.colors.accentGreen else if (attendancePercent >= 50) GradilyTheme.colors.accentAmber else GradilyTheme.colors.accentRed,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    } else {
+                        Text("No attendance records", color = GradilyTheme.colors.textMuted, fontSize = 10.sp)
+                    }
                 }
             }
 
@@ -198,20 +349,38 @@ fun StudentListItem(
                 modifier = Modifier
                     .clip(RoundedCornerShape(8.dp))
                     .background(
-                        if (gpa >= 3.0) AccentGreen.copy(alpha = 0.2f)
-                        else if (gpa >= 2.0) AccentAmber.copy(alpha = 0.2f)
-                        else AccentRed.copy(alpha = 0.2f)
+                        if (gpa >= 3.0) GradilyTheme.colors.accentGreen.copy(alpha = 0.2f)
+                        else if (gpa >= 2.0) GradilyTheme.colors.accentAmber.copy(alpha = 0.2f)
+                        else GradilyTheme.colors.accentRed.copy(alpha = 0.2f)
                     )
                     .padding(horizontal = 8.dp, vertical = 4.dp)
             ) {
                 Text(
                     String.format("%.2f", gpa),
-                    color = if (gpa >= 3.0) AccentGreen
-                    else if (gpa >= 2.0) AccentAmber
-                    else AccentRed,
+                    color = if (gpa >= 3.0) GradilyTheme.colors.accentGreen
+                    else if (gpa >= 2.0) GradilyTheme.colors.accentAmber
+                    else GradilyTheme.colors.accentRed,
                     fontWeight = FontWeight.Bold,
                     fontSize = 13.sp
                 )
+            }
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            // Attendance buttons
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                IconButton(
+                    onClick = { viewModel.markAttendance(student, true) },
+                    modifier = Modifier.size(28.dp).clip(CircleShape).background(GradilyTheme.colors.surfaceGreen)
+                ) {
+                    Text("P", color = GradilyTheme.colors.accentGreen, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                }
+                IconButton(
+                    onClick = { viewModel.markAttendance(student, false) },
+                    modifier = Modifier.size(28.dp).clip(CircleShape).background(GradilyTheme.colors.glassBgDark)
+                ) {
+                    Text("A", color = GradilyTheme.colors.accentRed, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                }
             }
 
             Spacer(modifier = Modifier.width(8.dp))
@@ -222,12 +391,13 @@ fun StudentListItem(
                     viewModel.setCurrentStudent(student)
                     onAssessStudent(student)
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = AccentBlue.copy(alpha = 0.2f)),
+                colors = ButtonDefaults.buttonColors(containerColor = GradilyTheme.colors.accentBlue.copy(alpha = 0.2f)),
                 shape = RoundedCornerShape(10.dp),
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                modifier = Modifier.height(32.dp),
                 elevation = ButtonDefaults.buttonElevation(0.dp)
             ) {
-                Text("Assess", color = AccentBlue, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                Text("Assess", color = GradilyTheme.colors.accentBlue, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
             }
 
             Spacer(modifier = Modifier.width(4.dp))
@@ -238,9 +408,9 @@ fun StudentListItem(
                 modifier = Modifier
                     .size(36.dp)
                     .clip(RoundedCornerShape(10.dp))
-                    .background(AccentRed.copy(alpha = 0.1f))
+                    .background(GradilyTheme.colors.accentRed.copy(alpha = 0.1f))
             ) {
-                Icon(Icons.Default.Delete, "Delete", tint = AccentRed, modifier = Modifier.size(18.dp))
+                Icon(Icons.Default.Delete, "Delete", tint = GradilyTheme.colors.accentRed, modifier = Modifier.size(18.dp))
             }
         }
     }
@@ -273,14 +443,14 @@ fun StudentEnrollmentScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             GlassCard(modifier = Modifier.fillMaxWidth()) {
-                Text("Student Name", color = TextSecondary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                Text("Student Name", color = GradilyTheme.colors.textSecondary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
                 GradilyTextField(
                     value = studentName,
                     onValueChange = { studentName = it },
                     label = "Full name"
                 )
                 Spacer(modifier = Modifier.height(16.dp))
-                Text("Student Email", color = TextSecondary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                Text("Student Email", color = GradilyTheme.colors.textSecondary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
                 GradilyTextField(
                     value = studentEmail,
                     onValueChange = { studentEmail = it },
@@ -289,7 +459,7 @@ fun StudentEnrollmentScreen(
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     "The student can use this email to create an account and view their grades.",
-                    color = TextMuted,
+                    color = GradilyTheme.colors.textMuted,
                     fontSize = 11.sp
                 )
                 Spacer(modifier = Modifier.height(24.dp))
@@ -308,7 +478,7 @@ fun StudentEnrollmentScreen(
             Spacer(modifier = Modifier.weight(0.3f))
 
             TextButton(onClick = onNavigateBack) {
-                Text("← Return", color = TextMuted, fontSize = 14.sp)
+                Text("← Return", color = GradilyTheme.colors.textMuted, fontSize = 14.sp)
             }
         }
     }
@@ -347,14 +517,14 @@ fun StudentGradeScreen(
                     onClick = onNavigateBack,
                     modifier = Modifier
                         .clip(CircleShape)
-                        .background(GlassBg)
+                        .background(GradilyTheme.colors.glassBg)
                 ) {
-                    Icon(Icons.Default.ArrowBack, "Back", tint = TextPrimary)
+                    Icon(Icons.Default.ArrowBack, "Back", tint = GradilyTheme.colors.textPrimary)
                 }
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
-                    Text(student?.studentName ?: "Student", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                    Text("${subject?.courseName ?: "Class"} Assessment", color = TextMuted, fontSize = 13.sp)
+                    Text(student?.studentName ?: "Student", color = GradilyTheme.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                    Text("${subject?.courseName ?: "Class"} Assessment", color = GradilyTheme.colors.textMuted, fontSize = 13.sp)
                 }
             }
 
@@ -367,12 +537,12 @@ fun StudentGradeScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column {
-                        Text("Current GPA", color = TextMuted, fontSize = 13.sp)
+                        Text("Current GPA", color = GradilyTheme.colors.textMuted, fontSize = 13.sp)
                         Text(
                             String.format("%.2f", currentGpa),
-                            color = if (currentGpa >= 3.0) AccentGreen
-                            else if (currentGpa >= 2.0) AccentAmber
-                            else AccentRed,
+                            color = if (currentGpa >= 3.0) GradilyTheme.colors.accentGreen
+                            else if (currentGpa >= 2.0) GradilyTheme.colors.accentAmber
+                            else GradilyTheme.colors.accentRed,
                             fontWeight = FontWeight.Bold,
                             fontSize = 32.sp
                         )
@@ -385,7 +555,7 @@ fun StudentGradeScreen(
                             currentGpa > 0 -> "⚠️ Needs work"
                             else -> "📋 Not graded"
                         },
-                        color = TextSecondary,
+                        color = GradilyTheme.colors.textSecondary,
                         fontSize = 14.sp
                     )
                 }
@@ -394,7 +564,7 @@ fun StudentGradeScreen(
             // Grade entries
             LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 item {
-                    Text("Assessment Scores", color = TextSecondary, fontWeight = FontWeight.Medium, fontSize = 14.sp, modifier = Modifier.padding(bottom = 4.dp))
+                    Text("Assessment Scores", color = GradilyTheme.colors.textSecondary, fontWeight = FontWeight.Medium, fontSize = 14.sp, modifier = Modifier.padding(bottom = 4.dp))
                 }
                 item { GradeInputCard("Quiz 1", quiz1, "Max: 10") { quiz1 = it } }
                 item { GradeInputCard("Assignment 1", assign1, "Max: 25") { assign1 = it } }
@@ -437,21 +607,21 @@ fun GradeInputCard(label: String, value: String, hint: String, onValueChange: (S
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(label, color = TextPrimary, fontWeight = FontWeight.Medium, fontSize = 15.sp)
-                Text(hint, color = TextMuted, fontSize = 11.sp)
+                Text(label, color = GradilyTheme.colors.textPrimary, fontWeight = FontWeight.Medium, fontSize = 15.sp)
+                Text(hint, color = GradilyTheme.colors.textMuted, fontSize = 11.sp)
             }
             OutlinedTextField(
                 value = value,
                 onValueChange = onValueChange,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = GlassBgDark,
-                    unfocusedContainerColor = GlassBgDark,
-                    focusedBorderColor = LightGreen,
-                    unfocusedBorderColor = GlassBorder,
-                    focusedTextColor = TextPrimary,
-                    unfocusedTextColor = TextPrimary,
-                    cursorColor = LightGreen
+                    focusedContainerColor = GradilyTheme.colors.glassBgDark,
+                    unfocusedContainerColor = GradilyTheme.colors.glassBgDark,
+                    focusedBorderColor = GradilyTheme.colors.lightGreen,
+                    unfocusedBorderColor = GradilyTheme.colors.glassBorder,
+                    focusedTextColor = GradilyTheme.colors.textPrimary,
+                    unfocusedTextColor = GradilyTheme.colors.textPrimary,
+                    cursorColor = GradilyTheme.colors.lightGreen
                 ),
                 textStyle = TextStyle(textAlign = TextAlign.Center, fontSize = 16.sp, fontWeight = FontWeight.SemiBold),
                 shape = RoundedCornerShape(12.dp),

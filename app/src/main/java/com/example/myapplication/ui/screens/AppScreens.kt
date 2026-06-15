@@ -2,12 +2,15 @@ package com.example.myapplication.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -16,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -64,16 +68,24 @@ fun ProfileScreen(
                 ) {
                     IconButton(
                         onClick = { scope.launch { drawerState.open() } },
-                        modifier = Modifier.clip(CircleShape).background(GlassBg)
+                        modifier = Modifier.clip(CircleShape).background(GradilyTheme.colors.glassBg)
                     ) {
-                        Icon(Icons.Default.Menu, "Menu", tint = TextPrimary)
+                        Icon(Icons.Default.Menu, "Menu", tint = GradilyTheme.colors.textPrimary)
                     }
-                    Text("Profile", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+                    Text("Profile", color = GradilyTheme.colors.textPrimary, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
                     Spacer(modifier = Modifier.size(48.dp)) // To balance the menu icon
                 }
 
                 // ID Card
                 GlassCard(modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
+                    val launcher = androidx.activity.compose.rememberLauncherForActivityResult(
+                        contract = androidx.activity.result.contract.ActivityResultContracts.GetContent()
+                    ) { uri ->
+                        if (uri != null) {
+                            viewModel.updateProfilePicture(uri.toString())
+                        }
+                    }
+
                     Column(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally
@@ -82,43 +94,109 @@ fun ProfileScreen(
                             modifier = Modifier
                                 .size(100.dp)
                                 .clip(CircleShape)
-                                .background(Brush.linearGradient(listOf(LightGreen, AccentBlue)))
-                                .border(4.dp, GlassBorder, CircleShape),
+                                .background(Brush.linearGradient(listOf(GradilyTheme.colors.lightGreen, GradilyTheme.colors.accentBlue)))
+                                .border(4.dp, GradilyTheme.colors.glassBorder, CircleShape)
+                                .clickable { launcher.launch("image/*") },
                             contentAlignment = Alignment.Center
                         ) {
-                            if (user?.profilePicUri != null) {
-                                AsyncImage(
-                                    model = ImageRequest.Builder(context).data(user!!.profilePicUri).build(),
-                                    contentDescription = "Profile",
-                                    modifier = Modifier.fillMaxSize().clip(CircleShape),
-                                    contentScale = ContentScale.Crop
-                                )
+                            val picUri = user?.profilePicUri
+                            if (picUri != null) {
+                                if (picUri.startsWith("data:image")) {
+                                    val base64 = picUri.substringAfter(",")
+                                    val bytes = android.util.Base64.decode(base64, android.util.Base64.DEFAULT)
+                                    val bitmap = android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                                    if (bitmap != null) {
+                                        androidx.compose.foundation.Image(
+                                            bitmap = bitmap.asImageBitmap(),
+                                            contentDescription = "Profile",
+                                            modifier = Modifier.fillMaxSize().clip(CircleShape),
+                                            contentScale = ContentScale.Crop
+                                        )
+                                    }
+                                } else {
+                                    AsyncImage(
+                                        model = ImageRequest.Builder(context).data(picUri).build(),
+                                        contentDescription = "Profile",
+                                        modifier = Modifier.fillMaxSize().clip(CircleShape),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                }
                             } else {
                                 Text(if (user?.role == "LECTURER") "👨‍🏫" else "🎒", fontSize = 48.sp)
                             }
+                            
+                            // Edit badge
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.BottomEnd)
+                                    .size(28.dp)
+                                    .clip(CircleShape)
+                                    .background(GradilyTheme.colors.accentGreen),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(Icons.Default.Edit, contentDescription = "Edit", tint = Color.White, modifier = Modifier.size(16.dp))
+                            }
                         }
                         Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            user?.email?.substringBefore("@")?.capitalize() ?: "User",
-                            color = TextPrimary,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 24.sp
-                        )
+                        
+                        var isEditingName by remember { mutableStateOf(false) }
+                        var tempName by remember { mutableStateOf(user?.name ?: "") }
+                        
+                        if (isEditingName) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                OutlinedTextField(
+                                    value = tempName,
+                                    onValueChange = { tempName = it },
+                                    singleLine = true,
+                                    modifier = Modifier.width(180.dp),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = GradilyTheme.colors.accentBlue,
+                                        focusedTextColor = GradilyTheme.colors.textPrimary,
+                                        unfocusedTextColor = GradilyTheme.colors.textPrimary
+                                    )
+                                )
+                                IconButton(onClick = { 
+                                    if (tempName.isNotBlank()) {
+                                        viewModel.updateName(tempName)
+                                    }
+                                    isEditingName = false 
+                                }) {
+                                    Icon(Icons.Default.Check, contentDescription = "Save", tint = GradilyTheme.colors.accentGreen)
+                                }
+                            }
+                        } else {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                val displayName = if (!user?.name.isNullOrBlank()) user!!.name else (user?.email?.substringBefore("@")?.capitalize() ?: "User")
+                                Text(
+                                    displayName,
+                                    color = GradilyTheme.colors.textPrimary,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 24.sp
+                                )
+                                IconButton(onClick = { 
+                                    tempName = if (!user?.name.isNullOrBlank()) user!!.name else (user?.email?.substringBefore("@")?.capitalize() ?: "User")
+                                    isEditingName = true 
+                                }) {
+                                    Icon(Icons.Default.Edit, contentDescription = "Edit Name", tint = GradilyTheme.colors.textMuted, modifier = Modifier.size(16.dp))
+                                }
+                            }
+                        }
+                        
                         Text(
                             user?.email ?: "user@gradily.com",
-                            color = TextMuted,
+                            color = GradilyTheme.colors.textMuted,
                             fontSize = 14.sp
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(12.dp))
-                                .background(AccentPurple.copy(alpha = 0.2f))
+                                .background(GradilyTheme.colors.accentPurple.copy(alpha = 0.2f))
                                 .padding(horizontal = 16.dp, vertical = 6.dp)
                         ) {
                             Text(
                                 user?.role ?: "GUEST",
-                                color = AccentPurple,
+                                color = GradilyTheme.colors.accentPurple,
                                 fontWeight = FontWeight.SemiBold,
                                 fontSize = 12.sp
                             )
@@ -149,10 +227,10 @@ fun ProfileScreen(
                     ) {
                         GlassCard(modifier = Modifier.weight(1f)) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-                                Text("CGPA", color = TextMuted, fontSize = 12.sp)
+                                Text("CGPA", color = GradilyTheme.colors.textMuted, fontSize = 12.sp)
                                 Text(
                                     String.format("%.2f", cgpa),
-                                    color = if (cgpa >= 3.0) AccentGreen else if (cgpa >= 2.0) AccentAmber else AccentRed,
+                                    color = if (cgpa >= 3.0) GradilyTheme.colors.accentGreen else if (cgpa >= 2.0) GradilyTheme.colors.accentAmber else GradilyTheme.colors.accentRed,
                                     fontSize = 28.sp,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -160,10 +238,10 @@ fun ProfileScreen(
                         }
                         GlassCard(modifier = Modifier.weight(1f)) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-                                Text("Enrolled", color = TextMuted, fontSize = 12.sp)
+                                Text("Enrolled", color = GradilyTheme.colors.textMuted, fontSize = 12.sp)
                                 Text(
                                     "${enrolledStudents.size}",
-                                    color = AccentBlue,
+                                    color = GradilyTheme.colors.accentBlue,
                                     fontSize = 28.sp,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -191,10 +269,10 @@ fun ProfileScreen(
                     ) {
                         GlassCard(modifier = Modifier.weight(1f)) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-                                Text("Classes", color = TextMuted, fontSize = 12.sp)
+                                Text("Classes", color = GradilyTheme.colors.textMuted, fontSize = 12.sp)
                                 Text(
                                     "${subjects.size}",
-                                    color = AccentGreen,
+                                    color = GradilyTheme.colors.accentGreen,
                                     fontSize = 28.sp,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -202,10 +280,10 @@ fun ProfileScreen(
                         }
                         GlassCard(modifier = Modifier.weight(1f)) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-                                Text("Total Students", color = TextMuted, fontSize = 12.sp)
+                                Text("Total Students", color = GradilyTheme.colors.textMuted, fontSize = 12.sp)
                                 Text(
                                     "${allStudents.size}",
-                                    color = AccentBlue,
+                                    color = GradilyTheme.colors.accentBlue,
                                     fontSize = 28.sp,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -223,15 +301,15 @@ fun AchievementItem(emoji: String, title: String, desc: String) {
     GlassCard(modifier = Modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
-                modifier = Modifier.size(48.dp).clip(CircleShape).background(GlassBgDark),
+                modifier = Modifier.size(48.dp).clip(CircleShape).background(GradilyTheme.colors.glassBgDark),
                 contentAlignment = Alignment.Center
             ) {
                 Text(emoji, fontSize = 24.sp)
             }
             Spacer(modifier = Modifier.width(16.dp))
             Column {
-                Text(title, color = TextPrimary, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
-                Text(desc, color = TextMuted, fontSize = 12.sp)
+                Text(title, color = GradilyTheme.colors.textPrimary, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+                Text(desc, color = GradilyTheme.colors.textMuted, fontSize = 12.sp)
             }
         }
     }
@@ -273,11 +351,11 @@ fun SettingsScreen(
                 ) {
                     IconButton(
                         onClick = { scope.launch { drawerState.open() } },
-                        modifier = Modifier.clip(CircleShape).background(GlassBg)
+                        modifier = Modifier.clip(CircleShape).background(GradilyTheme.colors.glassBg)
                     ) {
-                        Icon(Icons.Default.Menu, "Menu", tint = TextPrimary)
+                        Icon(Icons.Default.Menu, "Menu", tint = GradilyTheme.colors.textPrimary)
                     }
-                    Text("Settings", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+                    Text("Settings", color = GradilyTheme.colors.textPrimary, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
                     Spacer(modifier = Modifier.size(48.dp))
                 }
 
@@ -289,29 +367,29 @@ fun SettingsScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column {
-                            Text("Push Notifications", color = TextPrimary, fontWeight = FontWeight.Medium)
-                            Text("Receive alerts on your device", color = TextMuted, fontSize = 12.sp)
+                            Text("Push Notifications", color = GradilyTheme.colors.textPrimary, fontWeight = FontWeight.Medium)
+                            Text("Receive alerts on your device", color = GradilyTheme.colors.textMuted, fontSize = 12.sp)
                         }
                         Switch(
                             checked = pushEnabled,
                             onCheckedChange = { pushEnabled = it },
-                            colors = SwitchDefaults.colors(checkedThumbColor = LightGreen, checkedTrackColor = SurfaceGreen)
+                            colors = SwitchDefaults.colors(checkedThumbColor = GradilyTheme.colors.lightGreen, checkedTrackColor = GradilyTheme.colors.surfaceGreen)
                         )
                     }
-                    Divider(color = GlassBorder, modifier = Modifier.padding(vertical = 16.dp))
+                    Divider(color = GradilyTheme.colors.glassBorder, modifier = Modifier.padding(vertical = 16.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column {
-                            Text("Email Updates", color = TextPrimary, fontWeight = FontWeight.Medium)
-                            Text("Receive summary reports", color = TextMuted, fontSize = 12.sp)
+                            Text("Email Updates", color = GradilyTheme.colors.textPrimary, fontWeight = FontWeight.Medium)
+                            Text("Receive summary reports", color = GradilyTheme.colors.textMuted, fontSize = 12.sp)
                         }
                         Switch(
                             checked = emailEnabled,
                             onCheckedChange = { emailEnabled = it },
-                            colors = SwitchDefaults.colors(checkedThumbColor = LightGreen, checkedTrackColor = SurfaceGreen)
+                            colors = SwitchDefaults.colors(checkedThumbColor = GradilyTheme.colors.lightGreen, checkedTrackColor = GradilyTheme.colors.surfaceGreen)
                         )
                     }
                 }
@@ -319,15 +397,15 @@ fun SettingsScreen(
                 SectionHeader("Account")
                 GlassCard(modifier = Modifier.fillMaxWidth()) {
                     TextButton(onClick = { /* Placeholder */ }, modifier = Modifier.fillMaxWidth()) {
-                        Text("Change Password", color = AccentBlue)
+                        Text("Change Password", color = GradilyTheme.colors.accentBlue)
                     }
-                    Divider(color = GlassBorder, modifier = Modifier.padding(vertical = 8.dp))
+                    Divider(color = GradilyTheme.colors.glassBorder, modifier = Modifier.padding(vertical = 8.dp))
                     TextButton(onClick = { /* Placeholder */ }, modifier = Modifier.fillMaxWidth()) {
-                        Text("Privacy Policy", color = TextSecondary)
+                        Text("Privacy Policy", color = GradilyTheme.colors.textSecondary)
                     }
-                    Divider(color = GlassBorder, modifier = Modifier.padding(vertical = 8.dp))
+                    Divider(color = GradilyTheme.colors.glassBorder, modifier = Modifier.padding(vertical = 8.dp))
                     TextButton(onClick = { /* Placeholder */ }, modifier = Modifier.fillMaxWidth()) {
-                        Text("Delete Account", color = AccentRed)
+                        Text("Delete Account", color = GradilyTheme.colors.accentRed)
                     }
                 }
             }

@@ -8,7 +8,11 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.School
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -17,6 +21,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -28,22 +33,41 @@ import com.example.myapplication.ui.theme.*
 const val WEB_CLIENT_ID = "667003870196-5r1qao1v97f20urlrptluuko8e78s7h1.apps.googleusercontent.com"
 
 @Composable
-fun FloatingEmoji(emoji: String) {
-    val infiniteTransition = rememberInfiniteTransition(label = "emoji_float")
+fun FloatingLogo(icon: ImageVector = Icons.Default.School) {
+    val infiniteTransition = rememberInfiniteTransition(label = "logo_float")
     val yOffset by infiniteTransition.animateFloat(
         initialValue = -10f,
         targetValue = 10f,
         animationSpec = infiniteRepeatable(
-            animation = tween(2000, easing = EaseInOutSine),
+            animation = tween(2500, easing = EaseInOutSine),
             repeatMode = RepeatMode.Reverse
         ),
-        label = "emoji_float_offset"
+        label = "logo_float_offset"
     )
-    Text(
-        emoji,
-        fontSize = 64.sp,
-        modifier = Modifier.padding(bottom = 16.dp).offset(y = yOffset.dp)
-    )
+    
+    Box(
+        modifier = Modifier
+            .padding(bottom = 24.dp)
+            .offset(y = yOffset.dp)
+            .size(80.dp)
+            .clip(CircleShape)
+            .background(
+                Brush.radialGradient(
+                    colors = listOf(
+                        GradilyTheme.colors.lightGreen.copy(alpha = 0.2f),
+                        Color.Transparent
+                    )
+                )
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = "Logo",
+            tint = GradilyTheme.colors.lightGreen,
+            modifier = Modifier.size(48.dp)
+        )
+    }
 }
 
 @Composable
@@ -66,17 +90,19 @@ fun MainAuthScreen(
         ) {
             Spacer(modifier = Modifier.weight(0.3f))
 
-            FloatingEmoji("🎓")
+            FloatingLogo()
             Text(
                 "Gradily",
                 fontSize = 42.sp,
                 fontWeight = FontWeight.Bold,
-                color = TextPrimary
+                color = GradilyTheme.colors.textPrimary,
+                letterSpacing = 1.sp
             )
             Text(
                 "Grade Management System",
                 fontSize = 14.sp,
-                color = TextSecondary,
+                color = GradilyTheme.colors.textSecondary,
+                letterSpacing = 0.5.sp,
                 modifier = Modifier.padding(bottom = 48.dp)
             )
 
@@ -86,10 +112,10 @@ fun MainAuthScreen(
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        "I am a...",
-                        fontSize = 18.sp,
+                        "Select Your Role",
+                        fontSize = 16.sp,
                         fontWeight = FontWeight.Medium,
-                        color = TextSecondary,
+                        color = GradilyTheme.colors.textSecondary,
                         modifier = Modifier.padding(bottom = 16.dp)
                     )
 
@@ -109,7 +135,7 @@ fun MainAuthScreen(
                                 .then(
                                     if (isLecturer) {
                                         Modifier.background(
-                                            Brush.linearGradient(listOf(SurfaceGreen, MediumGreen)),
+                                            Brush.linearGradient(listOf(GradilyTheme.colors.surfaceGreen, GradilyTheme.colors.mediumGreen)),
                                             RoundedCornerShape(20.dp)
                                         )
                                     } else Modifier
@@ -117,13 +143,18 @@ fun MainAuthScreen(
                         ) {
                             Column(
                                 horizontalAlignment = Alignment.CenterHorizontally,
-                                modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp)
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp)
                             ) {
-                                Text("👨‍🏫", fontSize = 32.sp)
-                                Spacer(modifier = Modifier.height(8.dp))
+                                Icon(
+                                    Icons.Default.School, 
+                                    contentDescription = "Lecturer",
+                                    tint = if (isLecturer) Color.White else GradilyTheme.colors.textPrimary,
+                                    modifier = Modifier.size(32.dp)
+                                )
+                                Spacer(modifier = Modifier.height(12.dp))
                                 Text(
                                     "Lecturer",
-                                    color = if (isLecturer) Color.White else TextPrimary,
+                                    color = if (isLecturer) Color.White else GradilyTheme.colors.textPrimary,
                                     fontWeight = FontWeight.SemiBold
                                 )
                             }
@@ -141,7 +172,7 @@ fun MainAuthScreen(
                                 .then(
                                     if (isStudent) {
                                         Modifier.background(
-                                            Brush.linearGradient(listOf(AccentBlue, AccentPurple)),
+                                            Brush.linearGradient(listOf(GradilyTheme.colors.accentBlue, GradilyTheme.colors.accentPurple)),
                                             RoundedCornerShape(20.dp)
                                         )
                                     } else Modifier
@@ -149,13 +180,18 @@ fun MainAuthScreen(
                         ) {
                             Column(
                                 horizontalAlignment = Alignment.CenterHorizontally,
-                                modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp)
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp)
                             ) {
-                                Text("🎒", fontSize = 32.sp)
-                                Spacer(modifier = Modifier.height(8.dp))
+                                Icon(
+                                    Icons.Default.Person, 
+                                    contentDescription = "Student",
+                                    tint = if (isStudent) Color.White else GradilyTheme.colors.textPrimary,
+                                    modifier = Modifier.size(32.dp)
+                                )
+                                Spacer(modifier = Modifier.height(12.dp))
                                 Text(
                                     "Student",
-                                    color = if (isStudent) Color.White else TextPrimary,
+                                    color = if (isStudent) Color.White else GradilyTheme.colors.textPrimary,
                                     fontWeight = FontWeight.SemiBold
                                 )
                             }
@@ -224,7 +260,7 @@ fun GoogleSignInButton(onClick: () -> Unit, isLoading: Boolean) {
             contentAlignment = Alignment.Center
         ) {
             if (isLoading) {
-                CircularProgressIndicator(color = DarkGreen, modifier = Modifier.size(24.dp))
+                CircularProgressIndicator(color = GradilyTheme.colors.darkGreen, modifier = Modifier.size(24.dp))
             } else {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -252,9 +288,9 @@ fun AuthDivider() {
             .padding(vertical = 24.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(modifier = Modifier.weight(1f).height(1.dp).background(GlassBorder))
-        Text("  OR  ", color = TextMuted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-        Box(modifier = Modifier.weight(1f).height(1.dp).background(GlassBorder))
+        Box(modifier = Modifier.weight(1f).height(1.dp).background(GradilyTheme.colors.glassBorder))
+        Text("  OR  ", color = GradilyTheme.colors.textMuted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+        Box(modifier = Modifier.weight(1f).height(1.dp).background(GradilyTheme.colors.glassBorder))
     }
 }
 
@@ -272,6 +308,7 @@ fun LoginScreen(
     val context = LocalContext.current
 
     val roleLabel = if (role == "LECTURER") "Lecturer" else "Student"
+    val roleIcon = if (role == "LECTURER") Icons.Default.School else Icons.Default.Person
     
     var isVisible by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { isVisible = true }
@@ -286,11 +323,11 @@ fun LoginScreen(
         ) {
             Spacer(modifier = Modifier.weight(0.15f))
 
-            FloatingEmoji(if (role == "LECTURER") "👨‍🏫" else "🎒")
+            FloatingLogo(roleIcon)
             SectionHeader("Welcome Back")
             SectionSubtitle("Sign in as $roleLabel")
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
             AnimatedVisibility(
                 visible = isVisible,
@@ -349,7 +386,7 @@ fun LoginScreen(
             Spacer(modifier = Modifier.weight(0.3f))
 
             TextButton(onClick = onNavigateBack) {
-                Text("← Back to role selection", color = TextMuted, fontSize = 14.sp)
+                Text("← Back to role selection", color = GradilyTheme.colors.textMuted, fontSize = 14.sp)
             }
         }
     }
@@ -370,6 +407,7 @@ fun SignUpScreen(
     val context = LocalContext.current
 
     val roleLabel = if (role == "LECTURER") "Lecturer" else "Student"
+    val roleIcon = if (role == "LECTURER") Icons.Default.School else Icons.Default.Person
 
     var isVisible by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { isVisible = true }
@@ -384,11 +422,11 @@ fun SignUpScreen(
         ) {
             Spacer(modifier = Modifier.weight(0.1f))
 
-            FloatingEmoji(if (role == "LECTURER") "👨‍🏫" else "🎒")
+            FloatingLogo(roleIcon)
             SectionHeader("Create Account")
             SectionSubtitle("Register as $roleLabel")
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
             AnimatedVisibility(
                 visible = isVisible,
@@ -457,7 +495,7 @@ fun SignUpScreen(
             Spacer(modifier = Modifier.weight(0.3f))
 
             TextButton(onClick = onNavigateBack) {
-                Text("← Back to login", color = TextMuted, fontSize = 14.sp)
+                Text("← Back to login", color = GradilyTheme.colors.textMuted, fontSize = 14.sp)
             }
         }
     }
