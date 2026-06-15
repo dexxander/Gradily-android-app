@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "667003870196",
+    "project_id": "gradily-11329",
+    "storage_bucket": "gradily-11329.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:667003870196:android:288d23e1950cca6b1637a1",
+        "android_client_info": {
+          "package_name": "com.example.myapplication"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "667003870196-5r1qao1v97f20urlrptluuko8e78s7h1.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBi4RCJ_5OPxGcr-gPhdTzwvpznTWI4P1Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "667003870196-5r1qao1v97f20urlrptluuko8e78s7h1.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

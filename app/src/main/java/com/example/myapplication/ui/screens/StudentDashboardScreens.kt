@@ -49,7 +49,7 @@ fun StudentDashboardScreen(
     val scope = rememberCoroutineScope()
 
     // Resolve subject names for each enrollment
-    val subjectNames = remember { mutableStateMapOf<Int, String>() }
+    val subjectNames = remember { mutableStateMapOf<String, String>() }
     LaunchedEffect(enrolledStudents) {
         enrolledStudents.forEach { student ->
             if (!subjectNames.containsKey(student.subjectId)) {
