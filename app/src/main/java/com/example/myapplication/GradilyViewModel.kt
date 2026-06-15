@@ -1,11 +1,18 @@
 package com.example.myapplication
 
 import android.app.Application
+import android.content.Context
 import android.util.Log
+import androidx.credentials.CredentialManager
+import androidx.credentials.CustomCredential
+import androidx.credentials.GetCredentialRequest
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.myapplication.data.*
+import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -45,26 +52,75 @@ class GradilyViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun login(email: String, password: String, role: String, onResult: (Boolean, String) -> Unit) {
+        Log.d("GradilyLogin", "Attempting login: email=$email, role=$role")
         auth.signInWithEmailAndPassword(email, password)
             .addOnSuccessListener { result ->
                 val uid = result.user?.uid ?: return@addOnSuccessListener
+                Log.d("GradilyLogin", "Auth succeeded, uid=$uid. Fetching Firestore doc...")
                 firestore.collection("users").document(uid).get()
                     .addOnSuccessListener { snapshot ->
-                        val user = snapshot.toObject(User::class.java)
-                        if (user != null && user.role == role) {
-                            _currentUser.value = user
-                            onResult(true, "Login successful")
+                        Log.d("GradilyLogin", "Firestore doc exists=${snapshot.exists()}, data=${snapshot.data}")
+                        if (snapshot.exists()) {
+                            val user = snapshot.toObject(User::class.java)
+                            Log.d("GradilyLogin", "Parsed user: id=${user?.id}, email=${user?.email}, role='${user?.role}'")
+                            
+                            if (user == null) {
+                                // Document exists but failed to parse — recreate it
+                                Log.w("GradilyLogin", "User document exists but could not be parsed. Recreating...")
+                                val newUser = User(id = uid, email = email, role = role)
+                                firestore.collection("users").document(uid).set(newUser)
+                                    .addOnSuccessListener {
+                                        _currentUser.value = newUser
+                                        onResult(true, "Login successful (profile fixed)")
+                                    }
+                                    .addOnFailureListener { e ->
+                                        auth.signOut()
+                                        onResult(false, "Failed to fix profile: ${e.message}")
+                                    }
+                            } else if (user.role.isBlank()) {
+                                // Role field is empty — update it with the selected role
+                                Log.w("GradilyLogin", "User has blank role. Setting role=$role")
+                                firestore.collection("users").document(uid).update("role", role)
+                                    .addOnSuccessListener {
+                                        val updatedUser = user.copy(role = role)
+                                        _currentUser.value = updatedUser
+                                        onResult(true, "Login successful")
+                                    }
+                                    .addOnFailureListener { e ->
+                                        auth.signOut()
+                                        onResult(false, "Failed to update role: ${e.message}")
+                                    }
+                            } else if (user.role == role) {
+                                _currentUser.value = user
+                                onResult(true, "Login successful")
+                            } else {
+                                Log.w("GradilyLogin", "Role mismatch: stored='${user.role}', requested='$role'")
+                                auth.signOut()
+                                onResult(false, "Account registered as ${user.role}, not $role")
+                            }
                         } else {
-                            auth.signOut()
-                            onResult(false, "Account registered as different role")
+                            // User exists in Auth but not in Firestore — create the document
+                            Log.w("GradilyLogin", "No Firestore doc found. Creating new user doc with role=$role")
+                            val newUser = User(id = uid, email = email, role = role)
+                            firestore.collection("users").document(uid).set(newUser)
+                                .addOnSuccessListener {
+                                    _currentUser.value = newUser
+                                    onResult(true, "Login successful (profile created)")
+                                }
+                                .addOnFailureListener { e ->
+                                    auth.signOut()
+                                    onResult(false, "Failed to create profile: ${e.message}")
+                                }
                         }
                     }
-                    .addOnFailureListener {
+                    .addOnFailureListener { e ->
+                        Log.e("GradilyLogin", "Firestore fetch failed", e)
                         auth.signOut()
-                        onResult(false, "Failed to retrieve user data")
+                        onResult(false, "Failed to retrieve user data: ${e.message}")
                     }
             }
             .addOnFailureListener { e ->
+                Log.e("GradilyLogin", "Auth failed", e)
                 onResult(false, e.message ?: "Login failed")
             }
     }
@@ -89,6 +145,62 @@ class GradilyViewModel(application: Application) : AndroidViewModel(application)
             .addOnFailureListener { e ->
                 onResult(false, e.message ?: "Sign up failed")
             }
+    }
+
+    fun signInWithGoogle(context: Context, webClientId: String, role: String, onResult: (Boolean, String) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val credentialManager = CredentialManager.create(context)
+                val googleIdOption = GetGoogleIdOption.Builder()
+                    .setFilterByAuthorizedAccounts(false)
+                    .setServerClientId(webClientId)
+                    .setAutoSelectEnabled(true)
+                    .build()
+
+                val request = GetCredentialRequest.Builder()
+                    .addCredentialOption(googleIdOption)
+                    .build()
+
+                val result = credentialManager.getCredential(context, request)
+                val credential = result.credential
+                
+                if (credential is CustomCredential && credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
+                    val googleIdTokenCredential = GoogleIdTokenCredential.createFrom(credential.data)
+                    val idToken = googleIdTokenCredential.idToken
+                    
+                    val authCredential = GoogleAuthProvider.getCredential(idToken, null)
+                    val authResult = auth.signInWithCredential(authCredential).await()
+                    
+                    val uid = authResult.user?.uid ?: throw Exception("Google Auth successful but no user ID")
+                    val email = authResult.user?.email ?: ""
+                    
+                    // Check if user document exists
+                    val snapshot = firestore.collection("users").document(uid).get().await()
+                    val existingUser = snapshot.toObject(User::class.java)
+                    
+                    if (existingUser != null) {
+                        if (existingUser.role == role) {
+                            _currentUser.value = existingUser
+                            onResult(true, "Login successful")
+                        } else {
+                            auth.signOut()
+                            onResult(false, "Account registered as different role")
+                        }
+                    } else {
+                        // Create new user document
+                        val newUser = User(id = uid, email = email, role = role)
+                        firestore.collection("users").document(uid).set(newUser).await()
+                        _currentUser.value = newUser
+                        onResult(true, "Account created and logged in")
+                    }
+                } else {
+                    onResult(false, "Invalid credential type")
+                }
+            } catch (e: Exception) {
+                Log.e("GoogleAuth", "Failed", e)
+                onResult(false, e.message ?: "Google Sign-In failed")
+            }
+        }
     }
 
     fun updateProfilePicture(uri: String) {

@@ -46,6 +46,7 @@ fun ClassStudentContentScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .systemBarsPadding()
                 .padding(24.dp)
         ) {
             // Top bar
@@ -259,6 +260,7 @@ fun StudentEnrollmentScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .systemBarsPadding()
                 .padding(32.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -333,6 +335,7 @@ fun StudentGradeScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .systemBarsPadding()
                 .padding(24.dp)
         ) {
             // Top bar

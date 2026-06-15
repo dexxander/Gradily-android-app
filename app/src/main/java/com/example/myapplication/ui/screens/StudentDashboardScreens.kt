@@ -14,6 +14,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -73,136 +74,155 @@ fun StudentDashboardScreen(
         }
     }
 
-    GradilyBackground {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(24.dp)
-        ) {
-            // Top bar: profile + logout
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+
+    GradilyDrawer(
+        drawerState = drawerState,
+        user = user,
+        onNavigateHome = { /* Already on home */ },
+        onLogout = onLogout
+    ) {
+        GradilyBackground {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .systemBarsPadding()
+                    .padding(24.dp)
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(52.dp)
-                            .clip(CircleShape)
-                            .background(
-                                Brush.linearGradient(listOf(AccentBlue, AccentPurple)),
-                                CircleShape
+                // Top bar: hamburger + profile + logout
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(
+                            onClick = { scope.launch { drawerState.open() } },
+                            modifier = Modifier
+                                .clip(CircleShape)
+                                .background(GlassBg)
+                        ) {
+                            Icon(Icons.Default.Menu, "Menu", tint = TextPrimary)
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Box(
+                            modifier = Modifier
+                                .size(52.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    Brush.linearGradient(listOf(AccentBlue, AccentPurple)),
+                                    CircleShape
+                                )
+                                .border(2.dp, GlassBorder, CircleShape)
+                                .clickable { imagePickerLauncher.launch("image/*") },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (user?.profilePicUri != null) {
+                                AsyncImage(
+                                    model = ImageRequest.Builder(context)
+                                        .data(user!!.profilePicUri)
+                                        .crossfade(true)
+                                        .build(),
+                                    contentDescription = "Profile",
+                                    modifier = Modifier.fillMaxSize().clip(CircleShape),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Text("🎒", fontSize = 22.sp)
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text(
+                                "Hello,",
+                                color = TextMuted,
+                                fontSize = 12.sp
                             )
-                            .border(2.dp, GlassBorder, CircleShape)
-                            .clickable { imagePickerLauncher.launch("image/*") },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (user?.profilePicUri != null) {
-                            AsyncImage(
-                                model = ImageRequest.Builder(context)
-                                    .data(user!!.profilePicUri)
-                                    .crossfade(true)
-                                    .build(),
-                                contentDescription = "Profile",
-                                modifier = Modifier.fillMaxSize().clip(CircleShape),
-                                contentScale = ContentScale.Crop
+                            Text(
+                                user?.email?.substringBefore("@") ?: "Student",
+                                color = TextPrimary,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 16.sp
                             )
-                        } else {
-                            Text("🎒", fontSize = 22.sp)
                         }
                     }
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column {
-                        Text(
-                            "Hello,",
-                            color = TextMuted,
-                            fontSize = 12.sp
-                        )
-                        Text(
-                            user?.email?.substringBefore("@") ?: "Student",
-                            color = TextPrimary,
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 16.sp
-                        )
+                    IconButton(
+                        onClick = onLogout,
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .background(GlassBg)
+                    ) {
+                        Icon(Icons.Default.ExitToApp, "Logout", tint = AccentRed)
                     }
                 }
-                IconButton(
-                    onClick = onLogout,
-                    modifier = Modifier
-                        .clip(CircleShape)
-                        .background(GlassBg)
-                ) {
-                    Icon(Icons.Default.ExitToApp, "Logout", tint = AccentRed)
-                }
-            }
 
-            SectionHeader("My Courses")
-            SectionSubtitle("${enrolledStudents.size} ${if (enrolledStudents.size == 1) "course" else "courses"} enrolled")
+                SectionHeader("My Courses")
+                SectionSubtitle("${enrolledStudents.size} ${if (enrolledStudents.size == 1) "course" else "courses"} enrolled")
 
-            if (enrolledStudents.isEmpty()) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("📭", fontSize = 48.sp)
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text("No courses yet", color = TextSecondary, fontSize = 18.sp, fontWeight = FontWeight.Medium)
-                        Text("Your lecturer will add you to a class", color = TextMuted, fontSize = 14.sp, textAlign = TextAlign.Center)
+                if (enrolledStudents.isEmpty()) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("📭", fontSize = 48.sp)
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text("No courses yet", color = TextSecondary, fontSize = 18.sp, fontWeight = FontWeight.Medium)
+                            Text("Your lecturer will add you to a class", color = TextMuted, fontSize = 14.sp, textAlign = TextAlign.Center)
+                        }
                     }
-                }
-            } else {
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    items(enrolledStudents, key = { it.studentId }) { student ->
-                        val assessment by viewModel.getAssessmentByStudentId(student.studentId).collectAsState(initial = null)
-                        val gpa = viewModel.calculateGPA(assessment)
+                } else {
+                    LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        items(enrolledStudents, key = { it.studentId }) { student ->
+                            val assessment by viewModel.getAssessmentByStudentId(student.studentId).collectAsState(initial = null)
+                            val gpa = viewModel.calculateGPA(assessment)
 
-                        GlassCard(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(20.dp))
-                                .clickable { onViewSubject(student) }
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
+                            GlassCard(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(20.dp))
+                                    .clickable { onViewSubject(student) }
                             ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        subjectNames[student.subjectId] ?: "Loading...",
-                                        color = TextPrimary,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 18.sp
-                                    )
-                                    Text(
-                                        "Tap to view grades",
-                                        color = TextMuted,
-                                        fontSize = 12.sp
-                                    )
-                                }
-                                // GPA badge
-                                Box(
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(12.dp))
-                                        .background(
-                                            if (gpa >= 3.0) AccentGreen.copy(alpha = 0.2f)
-                                            else if (gpa >= 2.0) AccentAmber.copy(alpha = 0.2f)
-                                            else AccentRed.copy(alpha = 0.2f)
-                                        )
-                                        .padding(horizontal = 14.dp, vertical = 8.dp)
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Column(modifier = Modifier.weight(1f)) {
                                         Text(
-                                            String.format("%.2f", gpa),
-                                            color = if (gpa >= 3.0) AccentGreen
-                                            else if (gpa >= 2.0) AccentAmber
-                                            else AccentRed,
+                                            subjectNames[student.subjectId] ?: "Loading...",
+                                            color = TextPrimary,
                                             fontWeight = FontWeight.Bold,
                                             fontSize = 18.sp
                                         )
-                                        Text("GPA", color = TextMuted, fontSize = 10.sp)
+                                        Text(
+                                            "Tap to view grades",
+                                            color = TextMuted,
+                                            fontSize = 12.sp
+                                        )
+                                    }
+                                    // GPA badge
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .background(
+                                                if (gpa >= 3.0) AccentGreen.copy(alpha = 0.2f)
+                                                else if (gpa >= 2.0) AccentAmber.copy(alpha = 0.2f)
+                                                else AccentRed.copy(alpha = 0.2f)
+                                            )
+                                            .padding(horizontal = 14.dp, vertical = 8.dp)
+                                    ) {
+                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                            Text(
+                                                String.format("%.2f", gpa),
+                                                color = if (gpa >= 3.0) AccentGreen
+                                                else if (gpa >= 2.0) AccentAmber
+                                                else AccentRed,
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 18.sp
+                                            )
+                                            Text("GPA", color = TextMuted, fontSize = 10.sp)
+                                        }
                                     }
                                 }
                             }
@@ -234,6 +254,7 @@ fun StudentSubjectDetailScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .systemBarsPadding()
                 .padding(24.dp)
         ) {
             // Top bar

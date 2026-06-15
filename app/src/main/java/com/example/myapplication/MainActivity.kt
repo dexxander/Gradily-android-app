@@ -3,6 +3,7 @@ package com.example.myapplication
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
@@ -25,6 +26,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
         setContent {
             MaterialTheme {
                 Surface(modifier = Modifier.fillMaxSize(), color = DarkBackground) {
@@ -76,12 +78,31 @@ fun GradilyApp(viewModel: GradilyViewModel) {
 
     NavHost(
         navController = navController,
-        startDestination = "main_auth",
+        startDestination = "splash",
         enterTransition = { slideInFromRight() },
         exitTransition = { slideOutToLeft() },
         popEnterTransition = { slideInFromLeft() },
         popExitTransition = { slideOutToRight() }
     ) {
+        composable(
+            "splash",
+            enterTransition = { fadeInSmooth() },
+            exitTransition = { fadeOutSmooth() }
+        ) {
+            SplashScreen(
+                viewModel = viewModel,
+                onNavigateToAuth = {
+                    navController.navigate("main_auth") { popUpTo("splash") { inclusive = true } }
+                },
+                onNavigateToLecturer = {
+                    navController.navigate("class_list") { popUpTo("splash") { inclusive = true } }
+                },
+                onNavigateToStudent = {
+                    navController.navigate("student_dashboard") { popUpTo("splash") { inclusive = true } }
+                }
+            )
+        }
+
         composable(
             "main_auth",
             enterTransition = { fadeInSmooth() },
@@ -115,8 +136,8 @@ fun GradilyApp(viewModel: GradilyViewModel) {
                 role = role,
                 onNavigateBack = { navController.popBackStack() },
                 onSignUpSuccess = {
-                    navController.navigate("login/$role") {
-                        popUpTo("main_auth")
+                    navController.navigate("splash") {
+                        popUpTo("main_auth") { inclusive = true }
                     }
                 }
             )
