@@ -203,6 +203,9 @@ fun GradilyApp(viewModel: GradilyViewModel) {
                         popUpTo("settings") { inclusive = true }
                     }
                 },
+                onViewStudents = {
+                    navController.navigate("lecturer_students")
+                },
                 onLogout = {
                     viewModel.logout()
                     navController.navigate("main_auth") { popUpTo(0) }
@@ -277,6 +280,13 @@ fun GradilyApp(viewModel: GradilyViewModel) {
                         popUpTo("class_list") { inclusive = true }
                     }
                 }
+            )
+        }
+        
+        composable("lecturer_students") {
+            LecturerStudentsScreen(
+                viewModel = viewModel,
+                onNavigateBack = { navController.popBackStack() }
             )
         }
 
