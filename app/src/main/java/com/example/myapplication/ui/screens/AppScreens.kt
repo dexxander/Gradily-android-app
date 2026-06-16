@@ -14,6 +14,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -543,6 +544,40 @@ fun LecturerStudentsScreen(
                         color = GradilyTheme.colors.accentBlue,
                         fontSize = 14.sp
                     )
+                }
+                
+                Spacer(modifier = Modifier.weight(1f))
+                
+                var isExporting by remember { mutableStateOf(false) }
+                val context = androidx.compose.ui.platform.LocalContext.current
+                val coroutineScope = rememberCoroutineScope()
+                
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(GradilyTheme.colors.accentBlue.copy(alpha = 0.15f))
+                        .border(1.dp, GradilyTheme.colors.accentBlue.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
+                        .clickable { 
+                            if (!isExporting && uniqueStudents.isNotEmpty()) {
+                                isExporting = true
+                                coroutineScope.launch {
+                                    com.example.myapplication.PdfExportHelper.exportStudentListToPdf(context, uniqueStudents, subjects)
+                                    isExporting = false
+                                }
+                            }
+                        }
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (isExporting) {
+                            CircularProgressIndicator(color = GradilyTheme.colors.accentBlue, modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                        } else {
+                            Icon(Icons.Default.Share, contentDescription = "Export", tint = GradilyTheme.colors.accentBlue, modifier = Modifier.size(16.dp))
+                        }
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(if (isExporting) "Wait..." else "Export", color = GradilyTheme.colors.accentBlue, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    }
                 }
             }
 

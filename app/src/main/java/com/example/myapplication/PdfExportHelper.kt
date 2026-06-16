@@ -99,28 +99,125 @@ object PdfExportHelper {
 
                     yOffset += 20f
                     canvas.drawLine(margin, yOffset - 10, pageInfo.pageWidth - margin, yOffset - 10, linePaint)
-                    yOffset += 10f
+                    yOffset += 20f
                 }
 
                 document.finishPage(page)
 
-                // Save file
                 val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-                val fileName = "GradeReport_${subject.courseName.replace(" ", "_")}.pdf"
-                val file = File(downloadsDir, fileName)
-
-                FileOutputStream(file).use { outputStream ->
-                    document.writeTo(outputStream)
-                }
+                val file = File(downloadsDir, "GradeReport_${subject.courseName.replace(" ", "_")}.pdf")
+                
+                val outputStream = FileOutputStream(file)
+                document.writeTo(outputStream)
                 document.close()
+                outputStream.close()
 
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(context, "Exported to Downloads: $fileName", Toast.LENGTH_LONG).show()
+                    Toast.makeText(context, "PDF saved to Downloads: ${file.name}", Toast.LENGTH_LONG).show()
                 }
 
             } catch (e: Exception) {
+                e.printStackTrace()
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(context, "Export failed: ${e.message}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Failed to export PDF", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    suspend fun exportStudentListToPdf(
+        context: Context,
+        uniqueStudents: Map<String, List<Student>>,
+        subjects: List<Subject>
+    ) {
+        withContext(Dispatchers.IO) {
+            try {
+                val document = PdfDocument()
+                val pageInfo = PdfDocument.PageInfo.Builder(595, 842, 1).create() // A4 size
+                var page = document.startPage(pageInfo)
+                var canvas = page.canvas
+
+                val titlePaint = Paint().apply {
+                    color = Color.BLACK
+                    textSize = 24f
+                    typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+                }
+
+                val headerPaint = Paint().apply {
+                    color = Color.DKGRAY
+                    textSize = 14f
+                    typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+                }
+
+                val textPaint = Paint().apply {
+                    color = Color.BLACK
+                    textSize = 12f
+                }
+
+                val linePaint = Paint().apply {
+                    color = Color.LTGRAY
+                    strokeWidth = 1f
+                }
+
+                var yOffset = 50f
+                val margin = 50f
+
+                // Title
+                canvas.drawText("Enrolled Students Roster", margin, yOffset, titlePaint)
+                yOffset += 40f
+                canvas.drawText("Total Unique Students: ${uniqueStudents.size}", margin, yOffset, textPaint)
+                yOffset += 40f
+
+                // Table Header
+                canvas.drawLine(margin, yOffset - 15, pageInfo.pageWidth - margin, yOffset - 15, linePaint)
+                canvas.drawText("Student Name", margin, yOffset, headerPaint)
+                canvas.drawText("Email", margin + 150f, yOffset, headerPaint)
+                canvas.drawText("Enrolled Courses", margin + 350f, yOffset, headerPaint)
+                yOffset += 10f
+                canvas.drawLine(margin, yOffset, pageInfo.pageWidth - margin, yOffset, linePaint)
+                yOffset += 25f
+
+                // Rows
+                for ((email, enrollments) in uniqueStudents) {
+                    // Check page break
+                    if (yOffset > pageInfo.pageHeight - 50) {
+                        document.finishPage(page)
+                        page = document.startPage(pageInfo)
+                        canvas = page.canvas
+                        yOffset = 50f
+                    }
+
+                    val studentName = enrollments.firstOrNull()?.studentName ?: "Unknown"
+                    val subjectsNames = enrollments.mapNotNull { s -> subjects.find { it.subjectId == s.subjectId }?.courseName }.joinToString(", ")
+
+                    canvas.drawText(studentName.take(20), margin, yOffset, textPaint)
+                    canvas.drawText(email.take(25), margin + 150f, yOffset, textPaint)
+                    
+                    // Wrap courses text if too long (simple substring for PDF bounds)
+                    val displayCourses = if (subjectsNames.length > 35) subjectsNames.take(32) + "..." else subjectsNames
+                    canvas.drawText(displayCourses, margin + 350f, yOffset, textPaint)
+
+                    yOffset += 20f
+                }
+
+                document.finishPage(page)
+
+                val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                val file = File(downloadsDir, "EnrolledStudentsRoster.pdf")
+                
+                val outputStream = FileOutputStream(file)
+                document.writeTo(outputStream)
+                document.close()
+                outputStream.close()
+
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(context, "Roster PDF saved to Downloads: ${file.name}", Toast.LENGTH_LONG).show()
+                }
+
+            } catch (e: Exception) {
+                e.printStackTrace()
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(context, "Failed to export PDF", Toast.LENGTH_SHORT).show()
                 }
             }
         }
