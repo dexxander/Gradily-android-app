@@ -596,7 +596,7 @@ fun StudentGradeScreen(
                 item { GradeInputCard("Midterm", midterm, "Max: 10") { midterm = it } }
                 item { GradeInputCard("Quiz 2", quiz2, "Max: 10") { quiz2 = it } }
                 item { GradeInputCard("Assignment 2", assign2, "Max: 25") { assign2 = it } }
-                item { GradeInputCard("Final Exam", finalExam, "Max: 100") { finalExam = it } }
+                item { GradeInputCard("Final Exam", finalExam, "Max: 40") { finalExam = it } }
 
                 item {
                     Spacer(modifier = Modifier.height(16.dp))

@@ -449,7 +449,7 @@ class GradilyViewModel(application: Application) : AndroidViewModel(application)
     fun calculateGPA(assessment: Assessment?): Double {
         if (assessment == null) return 0.0
         val totalMarks = assessment.quiz1 + assessment.assign1 + assessment.midterm + assessment.quiz2 + assessment.assign2 + assessment.finalExam
-        val percentage = (totalMarks / 180.0) * 100
+        val percentage = (totalMarks / 120.0) * 100
         return when {
             percentage >= 80 -> 4.0
             percentage >= 75 -> 3.67

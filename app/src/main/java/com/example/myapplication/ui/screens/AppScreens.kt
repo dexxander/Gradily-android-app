@@ -11,7 +11,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -40,41 +39,32 @@ fun ProfileScreen(
     onLogout: () -> Unit
 ) {
     val user by viewModel.currentUser.collectAsState()
-    val scope = rememberCoroutineScope()
-    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val context = LocalContext.current
 
-    GradilyDrawer(
-        drawerState = drawerState,
-        user = user,
+    GradilyBottomBar(
+        currentItem = BottomNavItem.PROFILE,
         onNavigateHome = onNavigateHome,
         onNavigateProfile = { /* Already here */ },
         onNavigateSettings = onNavigateSettings,
         onLogout = onLogout
-    ) {
+    ) { innerPadding ->
         GradilyBackground {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
+                    .padding(innerPadding)
                     .systemBarsPadding()
-                    .padding(24.dp),
+                    .padding(horizontal = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 // Top bar
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(
-                        onClick = { scope.launch { drawerState.open() } },
-                        modifier = Modifier.clip(CircleShape).background(GradilyTheme.colors.glassBg)
-                    ) {
-                        Icon(Icons.Default.Menu, "Menu", tint = GradilyTheme.colors.textPrimary)
-                    }
-                    Text("Profile", color = GradilyTheme.colors.textPrimary, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
-                    Spacer(modifier = Modifier.size(48.dp)) // To balance the menu icon
-                }
+                Text(
+                    "Profile",
+                    color = GradilyTheme.colors.textPrimary,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp)
+                )
 
                 // ID Card
                 GlassCard(modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
@@ -329,42 +319,32 @@ fun SettingsScreen(
     onNavigateProfile: () -> Unit,
     onLogout: () -> Unit
 ) {
-    val scope = rememberCoroutineScope()
-    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
-
     var pushEnabled by remember { mutableStateOf(true) }
     var emailEnabled by remember { mutableStateOf(false) }
 
-    GradilyDrawer(
-        drawerState = drawerState,
-        user = user,
+    GradilyBottomBar(
+        currentItem = BottomNavItem.SETTINGS,
         onNavigateHome = onNavigateHome,
         onNavigateProfile = onNavigateProfile,
         onNavigateSettings = { /* Already here */ },
         onLogout = onLogout
-    ) {
+    ) { innerPadding ->
         GradilyBackground {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
+                    .padding(innerPadding)
                     .systemBarsPadding()
-                    .padding(24.dp)
+                    .padding(horizontal = 24.dp)
             ) {
                 // Top bar
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(
-                        onClick = { scope.launch { drawerState.open() } },
-                        modifier = Modifier.clip(CircleShape).background(GradilyTheme.colors.glassBg)
-                    ) {
-                        Icon(Icons.Default.Menu, "Menu", tint = GradilyTheme.colors.textPrimary)
-                    }
-                    Text("Settings", color = GradilyTheme.colors.textPrimary, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
-                    Spacer(modifier = Modifier.size(48.dp))
-                }
+                Text(
+                    "Settings",
+                    color = GradilyTheme.colors.textPrimary,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp)
+                )
 
                 SectionHeader("Preferences")
                 GlassCard(modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp)) {

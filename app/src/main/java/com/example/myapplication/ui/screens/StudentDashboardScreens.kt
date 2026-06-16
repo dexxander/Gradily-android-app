@@ -14,8 +14,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.ExitToApp
-import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -64,100 +62,79 @@ fun StudentDashboardScreen(
         }
     }
 
-    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val allAnnouncements by viewModel.getAnnouncements().collectAsState(initial = emptyList())
 
-    GradilyDrawer(
-        drawerState = drawerState,
-        user = user,
+    GradilyBottomBar(
+        currentItem = BottomNavItem.HOME,
         onNavigateHome = { /* Already on home */ },
         onNavigateProfile = onNavigateProfile,
         onNavigateSettings = onNavigateSettings,
         onLogout = onLogout
-    ) {
+    ) { innerPadding ->
         GradilyBackground {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
+                    .padding(innerPadding)
                     .systemBarsPadding()
-                    .padding(24.dp)
+                    .padding(horizontal = 24.dp)
             ) {
-                // Top bar: hamburger + profile + logout
+                // Top bar: profile
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(
-                            onClick = { scope.launch { drawerState.open() } },
-                            modifier = Modifier
-                                .clip(CircleShape)
-                                .background(GradilyTheme.colors.glassBg)
-                        ) {
-                            Icon(Icons.Default.Menu, "Menu", tint = GradilyTheme.colors.textPrimary)
-                        }
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Box(
-                            modifier = Modifier
-                                .size(52.dp)
-                                .clip(CircleShape)
-                                .background(
-                                    Brush.linearGradient(listOf(GradilyTheme.colors.accentBlue, GradilyTheme.colors.accentPurple)),
-                                    CircleShape
-                                )
-                                .border(2.dp, GradilyTheme.colors.glassBorder, CircleShape),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            val picUri = user?.profilePicUri
-                            if (picUri != null) {
-                                if (picUri.startsWith("data:image")) {
-                                    val base64 = picUri.substringAfter(",")
-                                    val bytes = android.util.Base64.decode(base64, android.util.Base64.DEFAULT)
-                                    val bitmap = android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-                                    if (bitmap != null) {
-                                        androidx.compose.foundation.Image(
-                                            bitmap = bitmap.asImageBitmap(),
-                                            contentDescription = "Profile",
-                                            modifier = Modifier.fillMaxSize().clip(CircleShape),
-                                            contentScale = ContentScale.Crop
-                                        )
-                                    }
-                                } else {
-                                    AsyncImage(
-                                        model = ImageRequest.Builder(context).data(picUri).build(),
+                    Box(
+                        modifier = Modifier
+                            .size(52.dp)
+                            .clip(CircleShape)
+                            .background(
+                                Brush.linearGradient(listOf(GradilyTheme.colors.accentBlue, GradilyTheme.colors.accentPurple)),
+                                CircleShape
+                            )
+                            .border(2.dp, GradilyTheme.colors.glassBorder, CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        val picUri = user?.profilePicUri
+                        if (picUri != null) {
+                            if (picUri.startsWith("data:image")) {
+                                val base64 = picUri.substringAfter(",")
+                                val bytes = android.util.Base64.decode(base64, android.util.Base64.DEFAULT)
+                                val bitmap = android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                                if (bitmap != null) {
+                                    androidx.compose.foundation.Image(
+                                        bitmap = bitmap.asImageBitmap(),
                                         contentDescription = "Profile",
                                         modifier = Modifier.fillMaxSize().clip(CircleShape),
                                         contentScale = ContentScale.Crop
                                     )
                                 }
                             } else {
-                                Text("🎒", fontSize = 22.sp)
+                                AsyncImage(
+                                    model = ImageRequest.Builder(context).data(picUri).build(),
+                                    contentDescription = "Profile",
+                                    modifier = Modifier.fillMaxSize().clip(CircleShape),
+                                    contentScale = ContentScale.Crop
+                                )
                             }
-                        }
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Column {
-                            Text(
-                                "Hello,",
-                                color = GradilyTheme.colors.textMuted,
-                                fontSize = 12.sp
-                            )
-                            val displayName = if (!user?.name.isNullOrBlank()) user!!.name else (user?.email?.substringBefore("@") ?: "Student")
-                            Text(
-                                displayName,
-                                color = GradilyTheme.colors.textPrimary,
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 16.sp
-                            )
+                        } else {
+                            Text("🎒", fontSize = 22.sp)
                         }
                     }
-                    IconButton(
-                        onClick = onLogout,
-                        modifier = Modifier
-                            .clip(CircleShape)
-                            .background(GradilyTheme.colors.glassBg)
-                    ) {
-                        Icon(Icons.Default.ExitToApp, "Logout", tint = GradilyTheme.colors.accentRed)
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            "Hello,",
+                            color = GradilyTheme.colors.textMuted,
+                            fontSize = 12.sp
+                        )
+                        val displayName = if (!user?.name.isNullOrBlank()) user!!.name else (user?.email?.substringBefore("@") ?: "Student")
+                        Text(
+                            displayName,
+                            color = GradilyTheme.colors.textPrimary,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 16.sp
+                        )
                     }
                 }
 
@@ -487,7 +464,7 @@ fun StudentSubjectDetailScreen(
                 item { ReadOnlyGradeCard("Midterm", assessment?.midterm ?: 0.0, 10.0) }
                 item { ReadOnlyGradeCard("Quiz 2", assessment?.quiz2 ?: 0.0, 10.0) }
                 item { ReadOnlyGradeCard("Assignment 2", assessment?.assign2 ?: 0.0, 25.0) }
-                item { ReadOnlyGradeCard("Final Exam", assessment?.finalExam ?: 0.0, 100.0) }
+                item { ReadOnlyGradeCard("Final Exam", assessment?.finalExam ?: 0.0, 40.0) }
             }
         }
 
