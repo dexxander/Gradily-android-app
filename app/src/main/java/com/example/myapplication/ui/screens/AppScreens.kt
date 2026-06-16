@@ -301,6 +301,8 @@ fun ProfileScreen(
                     val subjects by viewModel.getSubjects().collectAsState(initial = emptyList())
                     val subjectIds = remember(subjects) { subjects.map { it.subjectId } }
                     val allStudents by viewModel.getStudentsForLecturerSubjects(subjectIds).collectAsState(initial = emptyList())
+                    val uniqueStudents = remember(allStudents) { allStudents.groupBy { it.email } }
+                    var showStudentsDialog by remember { mutableStateOf(false) }
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -317,17 +319,49 @@ fun ProfileScreen(
                                 )
                             }
                         }
-                        GlassCard(modifier = Modifier.weight(1f)) {
+                        GlassCard(modifier = Modifier.weight(1f).clickable { showStudentsDialog = true }) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
                                 Text("Total Students", color = GradilyTheme.colors.textMuted, fontSize = 12.sp)
                                 Text(
-                                    "${allStudents.size}",
+                                    "${uniqueStudents.size}",
                                     color = GradilyTheme.colors.accentBlue,
                                     fontSize = 28.sp,
                                     fontWeight = FontWeight.Bold
                                 )
                             }
                         }
+                    }
+                    
+                    if (showStudentsDialog) {
+                        androidx.compose.material3.AlertDialog(
+                            onDismissRequest = { showStudentsDialog = false },
+                            title = { Text("Enrolled Students", color = GradilyTheme.colors.textPrimary, fontWeight = FontWeight.Bold) },
+                            text = {
+                                LazyColumn(modifier = Modifier.fillMaxWidth()) {
+                                    items(uniqueStudents.size) { index ->
+                                        val entry = uniqueStudents.entries.toList()[index]
+                                        val studentEmail = entry.key
+                                        val enrollments = entry.value
+                                        val studentName = enrollments.firstOrNull()?.studentName ?: "Unknown"
+                                        val subjectsNames = enrollments.map { s -> subjects.find { it.subjectId == s.subjectId }?.courseName ?: "Unknown Course" }.joinToString(", ")
+                                        
+                                        Column(modifier = Modifier.padding(vertical = 8.dp).fillMaxWidth()) {
+                                            Text(studentName, fontWeight = FontWeight.SemiBold, color = GradilyTheme.colors.textPrimary, fontSize = 16.sp)
+                                            Text(studentEmail, fontSize = 12.sp, color = GradilyTheme.colors.textMuted)
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Text("Courses: $subjectsNames", fontSize = 13.sp, color = GradilyTheme.colors.accentBlue)
+                                        }
+                                    }
+                                }
+                            },
+                            confirmButton = {
+                                TextButton(onClick = { showStudentsDialog = false }) {
+                                    Text("Close", color = GradilyTheme.colors.accentGreen)
+                                }
+                            },
+                            containerColor = GradilyTheme.colors.glassBgDark,
+                            titleContentColor = GradilyTheme.colors.textPrimary
+                        )
                     }
                 }
             }

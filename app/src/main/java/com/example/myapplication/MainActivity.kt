@@ -72,6 +72,24 @@ private fun fadeOutSmooth(): ExitTransition =
     fadeOut(animationSpec = tween(TRANSITION_DURATION / 2)) +
     scaleOut(targetScale = 1.05f, animationSpec = tween(TRANSITION_DURATION / 2))
 
+private val bottomBarRoutes = listOf("profile", "settings", "class_list", "student_dashboard")
+
+private fun AnimatedContentTransitionScope<NavBackStackEntry>.bottomBarEnterTransition(): EnterTransition {
+    return if (initialState.destination.route in bottomBarRoutes) {
+        fadeIn(animationSpec = tween(300))
+    } else {
+        fadeInSmooth()
+    }
+}
+
+private fun AnimatedContentTransitionScope<NavBackStackEntry>.bottomBarExitTransition(): ExitTransition {
+    return if (targetState.destination.route in bottomBarRoutes) {
+        fadeOut(animationSpec = tween(300))
+    } else {
+        fadeOutSmooth()
+    }
+}
+
 @Composable
 fun GradilyApp(viewModel: GradilyViewModel) {
     val navController = rememberNavController()
@@ -168,8 +186,8 @@ fun GradilyApp(viewModel: GradilyViewModel) {
         // ====== MAIN DRAWER SCREENS ======
         composable(
             "profile",
-            enterTransition = { fadeInSmooth() },
-            exitTransition = { fadeOutSmooth() }
+            enterTransition = { bottomBarEnterTransition() },
+            exitTransition = { bottomBarExitTransition() }
         ) {
             ProfileScreen(
                 viewModel = viewModel,
@@ -194,8 +212,8 @@ fun GradilyApp(viewModel: GradilyViewModel) {
 
         composable(
             "settings",
-            enterTransition = { fadeInSmooth() },
-            exitTransition = { fadeOutSmooth() }
+            enterTransition = { bottomBarEnterTransition() },
+            exitTransition = { bottomBarExitTransition() }
         ) {
             SettingsScreen(
                 user = viewModel.currentUser.collectAsState().value,
@@ -221,8 +239,8 @@ fun GradilyApp(viewModel: GradilyViewModel) {
         // ====== LECTURER FLOW ======
         composable(
             "class_list",
-            enterTransition = { fadeInSmooth() },
-            exitTransition = { slideOutToLeft() }
+            enterTransition = { bottomBarEnterTransition() },
+            exitTransition = { bottomBarExitTransition() }
         ) {
             ClassListScreen(
                 viewModel = viewModel,
@@ -289,8 +307,8 @@ fun GradilyApp(viewModel: GradilyViewModel) {
         // ====== STUDENT FLOW ======
         composable(
             "student_dashboard",
-            enterTransition = { fadeInSmooth() },
-            exitTransition = { slideOutToLeft() }
+            enterTransition = { bottomBarEnterTransition() },
+            exitTransition = { bottomBarExitTransition() }
         ) {
             StudentDashboardScreen(
                 viewModel = viewModel,
