@@ -5,6 +5,8 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -54,7 +56,8 @@ fun ProfileScreen(
                     .fillMaxSize()
                     .padding(innerPadding)
                     .systemBarsPadding()
-                    .padding(horizontal = 24.dp),
+                    .padding(horizontal = 24.dp)
+                    .verticalScroll(rememberScrollState()),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 // Top bar
@@ -248,18 +251,57 @@ fun ProfileScreen(
                     
                     Spacer(modifier = Modifier.height(24.dp))
                     SectionHeader("Achievements")
-                    LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        item {
-                            AchievementItem("🌟", "Dean's List", "Achieved a CGPA above 3.5")
-                        }
-                        item {
-                            AchievementItem("🎯", "Perfect Attendance", "Never missed a class")
-                        }
-                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Dean's List — CGPA >= 3.5
+                    val deansProgress = (cgpa / 3.5).toFloat().coerceIn(0f, 1f)
+                    AchievementItem(
+                        emoji = "🌟",
+                        title = "Dean's List",
+                        desc = "Achieve a CGPA of 3.50 or above",
+                        progress = deansProgress,
+                        unlocked = cgpa >= 3.5
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Perfect Attendance
+                    val totalClasses = enrolledStudents.sumOf { it.totalClasses }
+                    val totalAttended = enrolledStudents.sumOf { it.classesAttended }
+                    val attendanceProgress = if (totalClasses > 0) (totalAttended.toFloat() / totalClasses.toFloat()).coerceIn(0f, 1f) else 0f
+                    AchievementItem(
+                        emoji = "🎯",
+                        title = "Perfect Attendance",
+                        desc = "Attend every class across all subjects",
+                        progress = attendanceProgress,
+                        unlocked = totalClasses > 0 && totalAttended == totalClasses
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Course Collector — enrolled in >= 3 subjects
+                    val courseProgress = (enrolledStudents.size / 3f).coerceIn(0f, 1f)
+                    AchievementItem(
+                        emoji = "📚",
+                        title = "Course Collector",
+                        desc = "Enroll in 3 or more subjects",
+                        progress = courseProgress,
+                        unlocked = enrolledStudents.size >= 3
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Honor Roll — CGPA >= 3.0
+                    val honorProgress = (cgpa / 3.0).toFloat().coerceIn(0f, 1f)
+                    AchievementItem(
+                        emoji = "🏆",
+                        title = "Honor Roll",
+                        desc = "Maintain a CGPA of 3.00 or above",
+                        progress = honorProgress,
+                        unlocked = cgpa >= 3.0
+                    )
                 } else {
                     val subjects by viewModel.getSubjects().collectAsState(initial = emptyList())
-                    val allStudents by viewModel.getStudents().collectAsState(initial = emptyList())
-                    
+                    val subjectIds = remember(subjects) { subjects.map { it.subjectId } }
+                    val allStudents by viewModel.getStudentsForLecturerSubjects(subjectIds).collectAsState(initial = emptyList())
+
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(16.dp)
@@ -294,19 +336,60 @@ fun ProfileScreen(
 }
 
 @Composable
-fun AchievementItem(emoji: String, title: String, desc: String) {
+fun AchievementItem(emoji: String, title: String, desc: String, progress: Float, unlocked: Boolean) {
     GlassCard(modifier = Modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
-                modifier = Modifier.size(48.dp).clip(CircleShape).background(GradilyTheme.colors.glassBgDark),
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .background(
+                        if (unlocked) GradilyTheme.colors.accentGreen.copy(alpha = 0.2f)
+                        else GradilyTheme.colors.glassBgDark
+                    ),
                 contentAlignment = Alignment.Center
             ) {
                 Text(emoji, fontSize = 24.sp)
             }
             Spacer(modifier = Modifier.width(16.dp))
-            Column {
-                Text(title, color = GradilyTheme.colors.textPrimary, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+            Column(modifier = Modifier.weight(1f)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(title, color = GradilyTheme.colors.textPrimary, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+                    if (unlocked) {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(GradilyTheme.colors.accentGreen.copy(alpha = 0.2f))
+                                .padding(horizontal = 8.dp, vertical = 2.dp)
+                        ) {
+                            Text("✓ Unlocked", color = GradilyTheme.colors.accentGreen, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+                    } else {
+                        Text(
+                            "${(progress * 100).toInt()}%",
+                            color = GradilyTheme.colors.textMuted,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
                 Text(desc, color = GradilyTheme.colors.textMuted, fontSize = 12.sp)
+                Spacer(modifier = Modifier.height(8.dp))
+                LinearProgressIndicator(
+                    progress = { progress },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(6.dp)
+                        .clip(RoundedCornerShape(3.dp)),
+                    color = if (unlocked) GradilyTheme.colors.accentGreen
+                        else if (progress >= 0.5f) GradilyTheme.colors.accentAmber
+                        else GradilyTheme.colors.accentRed.copy(alpha = 0.6f),
+                    trackColor = GradilyTheme.colors.glassBg,
+                )
             }
         }
     }

@@ -311,161 +311,175 @@ fun StudentSubjectDetailScreen(
     }
 
     GradilyBackground {
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .systemBarsPadding()
-                .padding(24.dp)
+                .padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(0.dp)
         ) {
             // Top bar
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(
+                            onClick = onNavigateBack,
+                            modifier = Modifier
+                                .clip(CircleShape)
+                                .background(GradilyTheme.colors.glassBg)
+                        ) {
+                            Icon(Icons.Default.ArrowBack, "Back", tint = GradilyTheme.colors.textPrimary)
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text(subjectName, color = GradilyTheme.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                            Text("Grade Report", color = GradilyTheme.colors.textMuted, fontSize = 13.sp)
+                        }
+                    }
+                    
                     IconButton(
-                        onClick = onNavigateBack,
+                        onClick = { showUnenrollConfirmation = true },
                         modifier = Modifier
                             .clip(CircleShape)
                             .background(GradilyTheme.colors.glassBg)
                     ) {
-                        Icon(Icons.Default.ArrowBack, "Back", tint = GradilyTheme.colors.textPrimary)
+                        Icon(Icons.Default.Delete, "Unenroll", tint = GradilyTheme.colors.accentRed)
                     }
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column {
-                        Text(subjectName, color = GradilyTheme.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 20.sp)
-                        Text("Grade Report", color = GradilyTheme.colors.textMuted, fontSize = 13.sp)
-                    }
-                }
-                
-                IconButton(
-                    onClick = { showUnenrollConfirmation = true },
-                    modifier = Modifier
-                        .clip(CircleShape)
-                        .background(GradilyTheme.colors.glassBg)
-                ) {
-                    Icon(Icons.Default.Delete, "Unenroll", tint = GradilyTheme.colors.accentRed)
                 }
             }
 
             // GPA card
-            GlassCard(modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        when {
-                            gpa >= 3.5 -> "🌟"
-                            gpa >= 3.0 -> "👍"
-                            gpa >= 2.0 -> "📝"
-                            gpa > 0 -> "⚠️"
-                            else -> "📋"
-                        },
-                        fontSize = 40.sp
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        String.format("%.2f", gpa),
-                        color = if (gpa >= 3.0) GradilyTheme.colors.accentGreen
-                        else if (gpa >= 2.0) GradilyTheme.colors.accentAmber
-                        else GradilyTheme.colors.accentRed,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 48.sp
-                    )
-                    Text("GPA", color = GradilyTheme.colors.textMuted, fontSize = 14.sp)
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        when {
-                            gpa >= 3.5 -> "Excellent Performance"
-                            gpa >= 3.0 -> "Good Performance"
-                            gpa >= 2.0 -> "Average Performance"
-                            gpa > 0 -> "Needs Improvement"
-                            else -> "Not Graded Yet"
-                        },
-                        color = GradilyTheme.colors.textSecondary,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-            }
-
-            // Grade Analytics Chart
-            GlassCard(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
-                Column {
-                    Text("Score Breakdown", color = GradilyTheme.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                    Spacer(modifier = Modifier.height(12.dp))
-                    GradeBarChart(
-                        labels = listOf("Quiz 1", "Assign 1", "Midterm", "Quiz 2", "Assign 2", "Final"),
-                        values = listOf(
-                            (assessment?.quiz1 ?: 0.0).toFloat(),
-                            (assessment?.assign1 ?: 0.0).toFloat(),
-                            (assessment?.midterm ?: 0.0).toFloat(),
-                            (assessment?.quiz2 ?: 0.0).toFloat(),
-                            (assessment?.assign2 ?: 0.0).toFloat(),
-                            (assessment?.finalExam ?: 0.0).toFloat()
-                        ),
-                        maxValues = listOf(10f, 25f, 10f, 10f, 25f, 100f)
-                    )
-                }
-            }
-
-            // Leaderboard
-            val classmates by viewModel.getStudentsBySubject(student.subjectId).collectAsState(initial = emptyList())
-            if (classmates.size > 1) {
-                GlassCard(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
-                    Column {
-                        Text("Class Ranking", color = GradilyTheme.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                        Spacer(modifier = Modifier.height(8.dp))
-                        
-                        // Build ranked list
-                        data class RankedStudent(val name: String, val gpa: Double, val isMe: Boolean)
-                        
-                        val ranked = classmates.map { s ->
-                            // We need assessments; approximate from the student list
-                            RankedStudent(
-                                name = s.studentName.take(1) + "***" + s.studentName.takeLast(1),
-                                gpa = 0.0, // placeholder — will be overridden with real data
-                                isMe = s.studentId == student.studentId
-                            )
-                        }
-                        
-                        // Since we don't have all assessments loaded, show a simplified ranking
+            item {
+                GlassCard(modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
                         Text(
-                            "Your rank will appear once all grades are submitted",
-                            color = GradilyTheme.colors.textMuted,
-                            fontSize = 12.sp
+                            when {
+                                gpa >= 3.5 -> "🌟"
+                                gpa >= 3.0 -> "👍"
+                                gpa >= 2.0 -> "📝"
+                                gpa > 0 -> "⚠️"
+                                else -> "📋"
+                            },
+                            fontSize = 40.sp
                         )
-                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            String.format("%.2f", gpa),
+                            color = if (gpa >= 3.0) GradilyTheme.colors.accentGreen
+                            else if (gpa >= 2.0) GradilyTheme.colors.accentAmber
+                            else GradilyTheme.colors.accentRed,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 48.sp
+                        )
+                        Text("GPA", color = GradilyTheme.colors.textMuted, fontSize = 14.sp)
                         Spacer(modifier = Modifier.height(4.dp))
-                        LeaderboardEntry(
-                            rank = 0,
-                            name = "You — ${student.studentName}",
-                            gpa = gpa,
-                            isCurrentUser = true
+                        Text(
+                            when {
+                                gpa >= 3.5 -> "Excellent Performance"
+                                gpa >= 3.0 -> "Good Performance"
+                                gpa >= 2.0 -> "Average Performance"
+                                gpa > 0 -> "Needs Improvement"
+                                else -> "Not Graded Yet"
+                            },
+                            color = GradilyTheme.colors.textSecondary,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium
                         )
                     }
                 }
             }
 
-            Text(
-                "Assessment Breakdown",
-                color = GradilyTheme.colors.textSecondary,
-                fontWeight = FontWeight.Medium,
-                fontSize = 14.sp,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
+            // Grade Analytics Chart
+            item {
+                GlassCard(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
+                    Column {
+                        Text("Score Breakdown", color = GradilyTheme.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        Spacer(modifier = Modifier.height(12.dp))
+                        GradeBarChart(
+                            labels = listOf("Quiz 1", "Assign 1", "Midterm", "Quiz 2", "Assign 2", "Final"),
+                            values = listOf(
+                                (assessment?.quiz1 ?: 0.0).toFloat(),
+                                (assessment?.assign1 ?: 0.0).toFloat(),
+                                (assessment?.midterm ?: 0.0).toFloat(),
+                                (assessment?.quiz2 ?: 0.0).toFloat(),
+                                (assessment?.assign2 ?: 0.0).toFloat(),
+                                (assessment?.finalExam ?: 0.0).toFloat()
+                            ),
+                            maxValues = listOf(10f, 25f, 10f, 10f, 25f, 100f)
+                        )
+                    }
+                }
+            }
+
+            // Leaderboard
+            item {
+                val classmates by viewModel.getStudentsBySubject(student.subjectId).collectAsState(initial = emptyList())
+                if (classmates.size > 1) {
+                    GlassCard(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
+                        Column {
+                            Text("Class Ranking", color = GradilyTheme.colors.textPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            
+                            // Build ranked list
+                            data class RankedStudent(val name: String, val gpa: Double, val isMe: Boolean)
+                            
+                            val ranked = classmates.map { s ->
+                                RankedStudent(
+                                    name = s.studentName.take(1) + "***" + s.studentName.takeLast(1),
+                                    gpa = 0.0,
+                                    isMe = s.studentId == student.studentId
+                                )
+                            }
+                            
+                            Text(
+                                "Your rank will appear once all grades are submitted",
+                                color = GradilyTheme.colors.textMuted,
+                                fontSize = 12.sp
+                            )
+                            
+                            Spacer(modifier = Modifier.height(4.dp))
+                            LeaderboardEntry(
+                                rank = 0,
+                                name = "You — ${student.studentName}",
+                                gpa = gpa,
+                                isCurrentUser = true
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Assessment Breakdown header
+            item {
+                Text(
+                    "Assessment Breakdown",
+                    color = GradilyTheme.colors.textSecondary,
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 14.sp,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+            }
 
             // Grade items (read-only for students)
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                item { ReadOnlyGradeCard("Quiz 1", assessment?.quiz1 ?: 0.0, 10.0) }
-                item { ReadOnlyGradeCard("Assignment 1", assessment?.assign1 ?: 0.0, 25.0) }
-                item { ReadOnlyGradeCard("Midterm", assessment?.midterm ?: 0.0, 10.0) }
-                item { ReadOnlyGradeCard("Quiz 2", assessment?.quiz2 ?: 0.0, 10.0) }
-                item { ReadOnlyGradeCard("Assignment 2", assessment?.assign2 ?: 0.0, 25.0) }
-                item { ReadOnlyGradeCard("Final Exam", assessment?.finalExam ?: 0.0, 40.0) }
-            }
+            item { ReadOnlyGradeCard("Quiz 1", assessment?.quiz1 ?: 0.0, 10.0) }
+            item { Spacer(modifier = Modifier.height(8.dp)) }
+            item { ReadOnlyGradeCard("Assignment 1", assessment?.assign1 ?: 0.0, 25.0) }
+            item { Spacer(modifier = Modifier.height(8.dp)) }
+            item { ReadOnlyGradeCard("Midterm", assessment?.midterm ?: 0.0, 10.0) }
+            item { Spacer(modifier = Modifier.height(8.dp)) }
+            item { ReadOnlyGradeCard("Quiz 2", assessment?.quiz2 ?: 0.0, 10.0) }
+            item { Spacer(modifier = Modifier.height(8.dp)) }
+            item { ReadOnlyGradeCard("Assignment 2", assessment?.assign2 ?: 0.0, 25.0) }
+            item { Spacer(modifier = Modifier.height(8.dp)) }
+            item { ReadOnlyGradeCard("Final Exam", assessment?.finalExam ?: 0.0, 40.0) }
+            item { Spacer(modifier = Modifier.height(16.dp)) }
         }
 
         if (showUnenrollConfirmation) {

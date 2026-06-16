@@ -482,6 +482,31 @@ class GradilyViewModel(application: Application) : AndroidViewModel(application)
         awaitClose { subscription.remove() }
     }
 
+    fun getStudentsForLecturerSubjects(subjectIds: List<String>): Flow<List<Student>> = callbackFlow {
+        if (subjectIds.isEmpty()) {
+            trySend(emptyList())
+            close()
+            return@callbackFlow
+        }
+        // Firestore whereIn supports max 10 values per query, so batch them
+        val listeners = mutableListOf<com.google.firebase.firestore.ListenerRegistration>()
+        val batchResults = mutableMapOf<Int, List<Student>>()
+        val batches = subjectIds.chunked(10)
+
+        batches.forEachIndexed { index, batch ->
+            val listener = firestore.collection("students")
+                .whereIn("subjectId", batch)
+                .addSnapshotListener { snapshot, _ ->
+                    if (snapshot != null) {
+                        batchResults[index] = snapshot.toObjects(Student::class.java)
+                        trySend(batchResults.values.flatten())
+                    }
+                }
+            listeners.add(listener)
+        }
+        awaitClose { listeners.forEach { it.remove() } }
+    }
+
     fun getStudentsBySubject(subjectId: String): Flow<List<Student>> = callbackFlow {
         if (subjectId.isEmpty()) {
             trySend(emptyList())
